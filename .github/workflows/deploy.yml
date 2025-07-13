@@ -19,7 +19,7 @@ jobs:
       - name: Deploy to EC2
         env:
           HUNIAN_USER: hun
-          HUNIAN_HOST: main.hunian.site
+          HUNIAN_HOST: main.hunian.kr
           HUNIAN_PASSWORD: ${{ secrets.HUNIAN_PASSWORD }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
           RDB_URL: ${{ secrets.RDB_URL }}
