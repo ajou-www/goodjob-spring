@@ -41,9 +41,9 @@ jobs:
           MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
           MYSQL_USER: ${{ secrets.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          ANTHROPIC_API_KEY : ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PROMETHEUS_HOST: ${{ secrets.PROMETHEUS_HOST }}
-          TOSS_SECRET_KEY : ${{ secrets.TOSS_SECRET_KEY }}
+          TOSS_SECRET_KEY: ${{ secrets.TOSS_SECRET_KEY }}
 
         run: |
           sshpass -p "$MAC_PASSWORD" ssh -o StrictHostKeyChecking=no $MAC_USER@$MAC_HOST << EOF
