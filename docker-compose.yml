@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: spring-app
     ports:
-      - "8100:8100"
+      - "8100:8080"
     env_file:
       - .env
     environment:
