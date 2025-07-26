@@ -49,7 +49,7 @@ jobs:
           sshpass -p "$HUNIAN_PASSWORD" ssh -o StrictHostKeyChecking=no $HUNIAN_USER@$HUNIAN_HOST << EOF
             cd Desktop/CV_Search
           
-            git pull origin dev_spring
+            git pull origin main
           
             ./gradlew clean build
           
