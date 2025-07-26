@@ -1,9 +1,9 @@
-name: Deploy to EC2 with Password
+name: Deploy Spring to Server with Password
 
 on:
   push:
     branches:
-      - dev_spring
+      - main
 
 jobs:
   deploy:
@@ -16,11 +16,11 @@ jobs:
       - name: Install sshpass
         run: sudo apt-get install -y sshpass
 
-      - name: Deploy to EC2
+      - name: Deploy Spring
         env:
-          MAC_USER: goodjob
-          MAC_HOST: ${{ secrets.MAC_HOST }}
-          MAC_PASSWORD: ${{ secrets.MAC_PASSWORD }}
+          HUNIAN_USER: hun
+          HUNIAN_HOST: main.hunian.kr
+          HUNIAN_PASSWORD: ${{ secrets.HUNIAN_PASSWORD }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
           RDB_URL: ${{ secrets.RDB_URL }}
           RDB_USERNAME: ${{ secrets.RDB_USERNAME }}
@@ -41,41 +41,42 @@ jobs:
           MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
           MYSQL_USER: ${{ secrets.MYSQL_USER }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY : ${{ secrets.ANTHROPIC_API_KEY }}
           PROMETHEUS_HOST: ${{ secrets.PROMETHEUS_HOST }}
-          TOSS_SECRET_KEY: ${{ secrets.TOSS_SECRET_KEY }}
+          TOSS_SECRET_KEY : ${{ secrets.TOSS_SECRET_KEY }}
 
         run: |
-          sshpass -p "$MAC_PASSWORD" ssh -o StrictHostKeyChecking=no $MAC_USER@$MAC_HOST << EOF
-            cd Desktop/goodjob_spring/CV_Search
-        
+          sshpass -p "$HUNIAN_PASSWORD" ssh -o StrictHostKeyChecking=no $HUNIAN_USER@$HUNIAN_HOST << EOF
+            cd Desktop/CV_Search
+          
             git pull origin dev_spring
-        
+          
             ./gradlew clean build
-        
-            echo "RDB_URL=${RDB_URL}" > .env
-            echo "RDB_USERNAME=${MYSQL_USER}" >> .env
-            echo "RDB_PASSWORD=${MYSQL_PASSWORD}" >> .env
-            echo "JWT_SECRET_KEY=${JWT_SECRET_KEY}" >> .env
-            echo "KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}" >> .env
-            echo "KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}" >> .env
-            echo "KAKAO_REDIRECT_URI=${KAKAO_REDIRECT_URI}" >> .env
-            echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" >> .env
-            echo "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" >> .env
-            echo "GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}" >> .env
-        
-            echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> .env
-            echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> .env
-            echo "AWS_REGION=${AWS_REGION}" >> .env
-            echo "AWS_S3_BUCKET=${AWS_S3_BUCKET}" >> .env
-            echo "FASTAPI_HOST=${FASTAPI_HOST}" >> .env
-            echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" >> .env
-            echo "EC2_HOST=${EC2_HOST}" >> .env
-            echo "PROMETHEUS_HOST=${PROMETHEUS_HOST}" >> .env
-            echo "TOSS_SECRET_KEY=${TOSS_SECRET_KEY}" >> .env
-        
+          
+            echo "RDB_URL=$RDB_URL" > .env
+            echo "RDB_USERNAME=$MYSQL_USER" >> .env
+            echo "RDB_PASSWORD=$MYSQL_PASSWORD" >> .env
+            echo "JWT_SECRET_KEY=$JWT_SECRET_KEY" >> .env
+            echo "KAKAO_CLIENT_ID=$KAKAO_CLIENT_ID" >> .env
+            echo "KAKAO_CLIENT_SECRET=$KAKAO_CLIENT_SECRET" >> .env
+            echo "KAKAO_REDIRECT_URI=$KAKAO_REDIRECT_URI" >> .env
+            echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env
+            echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env
+            echo "GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI" >> .env
+          
+            echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> .env
+            echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> .env
+            echo "AWS_REGION=$AWS_REGION" >> .env
+            echo "AWS_S3_BUCKET=$AWS_S3_BUCKET" >> .env
+            echo "FASTAPI_HOST=$FASTAPI_HOST" >> .env
+            echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" >> .env
+            echo "EC2_HOST=$EC2_HOST" >> .env
+            echo "PROMETHEUS_HOST=$PROMETHEUS_HOST" >> .env
+            echo "TOSS_SECRET_KEY=$TOSS_SECRET_KEY" >> .env
+          
             docker-compose down || true
             docker-compose up -d --build
-        
+          
             docker image prune -f
+            docker buildx prune -a -f
           EOF
