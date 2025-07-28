@@ -8,6 +8,7 @@ import com.www.goodjob.repository.UserOAuthRepository;
 import com.www.goodjob.repository.UserRepository;
 import com.www.goodjob.security.CustomOAuth2User;
 import com.www.goodjob.security.JwtTokenProvider;
+import com.www.goodjob.service.RefreshTokenRedisService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final UserOAuthRepository userOAuthRepository;
+    private final RefreshTokenRedisService refreshTokenRedisService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -70,6 +72,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         //  Refresh Token에 firstLogin 정보 포함
         String refreshToken = jwtTokenProvider.generateRefreshToken(email, isFirstLogin);
+        refreshTokenRedisService.saveToken(email, refreshToken, 30); // 30일 TTL
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
                 .secure(true)

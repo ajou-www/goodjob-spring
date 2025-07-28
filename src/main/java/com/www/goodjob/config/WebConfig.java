@@ -16,6 +16,6 @@ public class WebConfig implements WebMvcConfigurer {
                         "http://localhost:3000"
                 )
                 .allowedMethods("*")
-                .allowCredentials(true); // refreshToken 쿠키 전송 허용
+                .allowCredentials(true); // refreshToken 쿠키 전송 허용함
     }
 }

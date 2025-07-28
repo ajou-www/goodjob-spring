@@ -53,8 +53,9 @@ spring:
             user-name-attribute: id
   data:
     redis:
-#      host: ${EC2_HOST}
-      host: redis
+      host: ${EC2_HOST}
+#      host: redis
+#      host: localhost
       port: 6379
       timeout: 6000
       lettuce:
