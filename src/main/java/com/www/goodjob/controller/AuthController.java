@@ -6,6 +6,7 @@ import com.www.goodjob.repository.UserRepository;
 import com.www.goodjob.security.CustomUserDetails;
 import com.www.goodjob.security.JwtTokenProvider;
 import com.www.goodjob.service.AuthService;
+import com.www.goodjob.service.RefreshTokenRedisService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class AuthController {
     private final AuthService authService;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    private final RefreshTokenRedisService refreshTokenRedisService;
 
     @Operation(summary = "OAuth 로그인 URL 요청", description = """
             provider 파라미터로 소셜 로그인 방식 선택 (예: google, kakao) /
@@ -67,6 +69,11 @@ public class AuthController {
         }
 
         String email = jwtTokenProvider.getEmail(refreshToken);
+
+        if (!refreshTokenRedisService.isTokenValid(email, refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("서버에 저장된 토큰과 일치하지 않음");
+        }
+
         String newAccessToken = jwtTokenProvider.generateAccessToken(email);
 
         return ResponseEntity.ok(Collections.singletonMap("accessToken", newAccessToken));
@@ -123,7 +130,8 @@ public class AuthController {
             """)
     // 로그아웃 (refresh_token 쿠키 제거)
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletResponse response) {
+    public ResponseEntity<?> logout(HttpServletResponse response,
+                                    @AuthenticationPrincipal CustomUserDetails userDetails) {
         ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
                 .secure(true)
@@ -132,6 +140,8 @@ public class AuthController {
                 .sameSite("None")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
+
+        refreshTokenRedisService.deleteToken(userDetails.getUsername());
 
         return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
     }
@@ -166,6 +176,8 @@ public class AuthController {
                 .sameSite("None")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
+
+        refreshTokenRedisService.deleteToken(user.getEmail());
 
         return ResponseEntity.ok(Map.of(
                 "message", "회원 탈퇴가 완료되었고, 로그아웃 처리되었습니다.",
