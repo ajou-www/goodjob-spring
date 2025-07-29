@@ -12,23 +12,24 @@ public class RefreshTokenRedisService {
 
     private final StringRedisTemplate redisTemplate;
 
-    private static final String PREFIX = "refresh:";
-
-    public void saveToken(String email, String refreshToken, long daysToExpire) {
-        String key = PREFIX + email;
-        redisTemplate.opsForValue().set(key, refreshToken, Duration.ofDays(daysToExpire));
+    // 토큰 저장 (TTL 단위: 일)
+    public void saveToken(String email, String token, long days) {
+        redisTemplate.opsForValue().set(buildKey(email), token, Duration.ofDays(days));
     }
 
-    public String getToken(String email) {
-        return redisTemplate.opsForValue().get(PREFIX + email);
-    }
-
-    public void deleteToken(String email) {
-        redisTemplate.delete(PREFIX + email);
-    }
-
+    // 토큰 유효성 검증
     public boolean isTokenValid(String email, String token) {
-        String stored = getToken(email);
+        String stored = redisTemplate.opsForValue().get(buildKey(email));
         return stored != null && stored.equals(token);
+    }
+
+    // 토큰 삭제
+    public void deleteToken(String email) {
+        redisTemplate.delete(buildKey(email));
+    }
+
+    // Key 명세 통일
+    private String buildKey(String email) {
+        return "refresh:" + email;
     }
 }
