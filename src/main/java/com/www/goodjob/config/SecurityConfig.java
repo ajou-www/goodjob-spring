@@ -49,6 +49,7 @@ public class SecurityConfig {
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .logout(logout -> logout.disable())  // 디폴트 로그아웃 설정 해제
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/", "/auth/login", "/auth/callback-endpoint", "/auth/token/refresh",
@@ -60,9 +61,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthFilter(jwtTokenProvider, userRepository), UsernamePasswordAuthenticationFilter.class)
-
-                // 디폴트 로그아웃 설정 해제
-                .logout(logout -> logout.disable())
 
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/auth/login")
