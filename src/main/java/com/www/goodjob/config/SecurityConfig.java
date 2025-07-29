@@ -51,10 +51,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/", "/auth/**", "/oauth2/**", "/swagger-ui/**", "/swagger-ui.html",
+                                "/", "/auth/login", "/auth/callback-endpoint", "/auth/token/refresh",
+                                "/oauth2/**", "/swagger-ui/**", "/swagger-ui.html",
                                 "/v3/api-docs/**", "/s3/**", "/job-update/**", "/rec/**",
                                 "/jobs/**", "/error", "/actuator", "/actuator/prometheus", "/user/me", "/admin/**", "/payments/**", "/favicon.ico"
                                 ).permitAll()
+                        .requestMatchers("/auth/logout", "/auth/withdraw").authenticated() // 인증 필요
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthFilter(jwtTokenProvider, userRepository), UsernamePasswordAuthenticationFilter.class)
