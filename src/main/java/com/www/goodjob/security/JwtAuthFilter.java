@@ -1,7 +1,6 @@
 package com.www.goodjob.security;
 
 import com.www.goodjob.domain.User;
-import com.www.goodjob.enums.UserRole;
 import com.www.goodjob.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,7 +8,7 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,6 +17,7 @@ import org.springframework.web.filter.GenericFilterBean;
 import java.io.IOException;
 import java.util.List;
 
+@Slf4j
 @RequiredArgsConstructor
 public class JwtAuthFilter extends GenericFilterBean {
 
@@ -42,6 +42,7 @@ public class JwtAuthFilter extends GenericFilterBean {
         }
 
         String token = httpRequest.getHeader("Authorization");
+        log.debug("[JWT] Authorization 헤더에서 추출한 토큰: {}", token);
 
         // JWT 토큰 처리
         if (token != null && token.startsWith("Bearer ")) {
