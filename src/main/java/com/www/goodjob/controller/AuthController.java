@@ -12,7 +12,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -150,6 +152,9 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response,
                                     @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        logger.info("현재 인증 객체: {}", auth);
 
         User user = userDetails.getUser();
 
