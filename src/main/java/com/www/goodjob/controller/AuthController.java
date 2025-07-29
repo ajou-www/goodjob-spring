@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -58,26 +59,50 @@ public class AuthController {
     }
 
     @Operation(summary = "accessToken 재발급 요청", description = """
-            쿠키에 저장된 refresh_token을 기반으로 accessToken을 재발급함 /
-            프론트는 localStorage에 저장해서 이후 API 요청에 사용하면 됨
-            """)
-    // accessToken 재발급
+        ✅ 쿠키에 저장된 refresh_token 기반으로 accessToken을 재발급하고,
+        refresh_token도 새로 생성하여 Redis와 쿠키 모두 갱신
+
+        🔁 프론트는 응답의 accessToken을 localStorage에 저장하면 되고,
+        refresh_token은 쿠키에 자동 포함됨
+        """)
     @PostMapping("/token/refresh")
-    public ResponseEntity<?> refreshAccessToken(@CookieValue(value = "refresh_token", required = false) String refreshToken) {
+    public ResponseEntity<?> refreshAccessToken(
+            @CookieValue(value = "refresh_token", required = false) String refreshToken,
+            HttpServletResponse response
+    ) {
         if (refreshToken == null || !jwtTokenProvider.validateToken(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or missing refresh token");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid or missing refresh token"));
         }
 
         String email = jwtTokenProvider.getEmail(refreshToken);
 
+        // Redis에 저장된 refresh_token과 비교하여 일치하는지 확인
         if (!refreshTokenRedisService.isTokenValid(email, refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("서버에 저장된 토큰과 일치하지 않음");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "서버에 저장된 토큰과 일치하지 않음"));
         }
 
+        // accessToken, refreshToken 새로 발급
         String newAccessToken = jwtTokenProvider.generateAccessToken(email);
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(email);
 
-        return ResponseEntity.ok(Collections.singletonMap("accessToken", newAccessToken));
+        // Redis에 refreshToken 갱신 저장 (TTL: 14일)
+        refreshTokenRedisService.saveToken(email, newRefreshToken, 14);
+
+        // 쿠키 갱신
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", newRefreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(Duration.ofDays(14))
+                .sameSite("None")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
     }
+
 
     @Operation(
             summary = "accessToken + firstLogin 여부 반환",
@@ -121,8 +146,6 @@ public class AuthController {
                 "firstLogin", firstLogin
         ));
     }
-
-
 
     @Operation(summary = "로그아웃 (refresh_token 쿠키 제거)", description = """
             refresh_token 삭제하여 로그아웃 처리함 /
@@ -184,8 +207,6 @@ public class AuthController {
                 "loggedOut", true
         ));
     }
-
-
 
     @Operation(summary = "마스터 accessToken 발급 (관리자용)", description = """
             테스트용 masterKey 입력 시 관리자용 accessToken을 반환함 /
