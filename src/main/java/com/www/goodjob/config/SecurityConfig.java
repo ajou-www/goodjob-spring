@@ -60,6 +60,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthFilter(jwtTokenProvider, userRepository), UsernamePasswordAuthenticationFilter.class)
+
+                // 디폴트 로그아웃 설정 해제
+                .logout(logout -> logout.disable())
+
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/auth/login")
                         .authorizationEndpoint(endpoint -> endpoint
