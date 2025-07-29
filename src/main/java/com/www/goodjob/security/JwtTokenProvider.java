@@ -10,7 +10,7 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     // 유효기간 상수 정의
-    private final long ACCESS_TOKEN_VALID_TIME = 1000L * 60 * 60 * 24 * 30; // 30일
+    private final long ACCESS_TOKEN_VALID_TIME = 1000L * 60 * 10;  // 10분
     private final long REFRESH_TOKEN_VALID_TIME = 1000L * 60 * 60 * 24 * 14; // 14일 (쿠키 TTL과 통일)
 
     private final String secretKey;
