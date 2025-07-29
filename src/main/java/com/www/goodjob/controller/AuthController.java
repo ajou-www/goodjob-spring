@@ -1,13 +1,11 @@
 package com.www.goodjob.controller;
 
 import com.www.goodjob.domain.User;
-import com.www.goodjob.repository.UserOAuthRepository;
 import com.www.goodjob.repository.UserRepository;
 import com.www.goodjob.security.CustomUserDetails;
 import com.www.goodjob.security.JwtTokenProvider;
 import com.www.goodjob.service.AuthService;
 import com.www.goodjob.service.RefreshTokenRedisService;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -18,16 +16,16 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/auth")
@@ -153,14 +151,18 @@ public class AuthController {
             """)
     // 로그아웃 (refresh_token 쿠키 제거)
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletResponse response,
-                                    @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        String email = userDetails.getEmail(); // 또는 getUsername()
-        logger.info("[LOGOUT] 요청자 email={}", email);
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "로그아웃하려면 먼저 로그인해야 합니다."));
+        }
 
-        refreshTokenRedisService.deleteToken(email); // 여기에 대한 로그가 찍혀야 정상
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String email = userDetails.getEmail();
 
+        // 쿠키 삭제
         ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
                 .secure(true)
@@ -170,9 +172,10 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
 
+        refreshTokenRedisService.deleteToken(email);
+
         return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
     }
-
 
     @Operation(
             summary = "회원 탈퇴 (refresh_token + 사용자 정보 삭제)",
