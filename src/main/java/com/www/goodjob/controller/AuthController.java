@@ -24,9 +24,6 @@ import org.slf4j.LoggerFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.Authentication;
-
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -151,18 +148,14 @@ public class AuthController {
             """)
     // 로그아웃 (refresh_token 쿠키 제거)
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletResponse response) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    public ResponseEntity<?> logout(HttpServletResponse response,
+                                    @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "로그아웃하려면 먼저 로그인해야 합니다."));
-        }
+        String email = userDetails.getEmail(); // 또는 getUsername()
+        logger.info("[LOGOUT] 요청자 email={}", email);
 
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        String email = userDetails.getEmail();
+        refreshTokenRedisService.deleteToken(email); // 여기에 대한 로그가 찍혀야 정상
 
-        // 쿠키 삭제
         ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
                 .secure(true)
@@ -172,10 +165,9 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
 
-        refreshTokenRedisService.deleteToken(email);
-
         return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
     }
+
 
     @Operation(
             summary = "회원 탈퇴 (refresh_token + 사용자 정보 삭제)",

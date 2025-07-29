@@ -38,7 +38,11 @@ public class RefreshTokenRedisService {
 
     // 토큰 삭제
     public void deleteToken(String email) {
-        Boolean deleted = redisTemplate.delete(buildKey(email));
+        String key = buildKey(email);
+        Boolean deleted = redisTemplate.delete(key);
+        log.info("[DEBUG] Try delete key = {}", key);
+        log.info("[DEBUG] Deleted result = {}", deleted);
+
         if (Boolean.TRUE.equals(deleted)) {
             log.info("[REDIS] Deleted refresh token for email={}", email);
         } else {
