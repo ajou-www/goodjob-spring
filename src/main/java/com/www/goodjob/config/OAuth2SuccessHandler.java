@@ -49,7 +49,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         OAuthProvider provider = extractProvider(customUser);
         String oauthId = customUser.getOauthId(provider);
 
-        // 첫 로그인 여부 판단
+        // 회원이 없다면 저장 (최초 로그인)
         boolean isFirstLogin = !userRepository.existsByEmail(email);
 
         if (isFirstLogin) {
@@ -70,39 +70,34 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             log.info("[OAUTH] firstLogin = false for email={}", email);
         }
 
-        //  Refresh Token에 firstLogin 정보 포함
+        // refreshToken 생성 및 Redis 저장
         String refreshToken = jwtTokenProvider.generateRefreshToken(email, isFirstLogin);
-        refreshTokenRedisService.saveToken(email, refreshToken, 30); // 30일 TTL
+        refreshTokenRedisService.saveToken(email, refreshToken, 14); // TTL 14일로 통일
+
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .maxAge(Duration.ofDays(14))
+                .maxAge(Duration.ofDays(14)) // 쿠키 TTL 맞춤
                 .sameSite("None")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
-        // 리디렉션 URI 디코딩
+        // 리디렉션 처리
         String encodedState = request.getParameter("state");
-        String redirectUri;
+        String redirectUri = "https://www.goodjob.ai.kr/auth/callback";
 
         try {
             if (encodedState != null) {
                 byte[] decodedBytes = Base64.getUrlDecoder().decode(encodedState);
                 String decoded = new String(decodedBytes, StandardCharsets.UTF_8).replaceAll("[\\r\\n]", "");
-
                 if (isValidRedirectUri(decoded)) {
                     redirectUri = decoded;
                     log.info("[OAUTH] decoded redirect_uri from state: {}", redirectUri);
-                } else {
-                    throw new IllegalArgumentException("Invalid redirect URI");
                 }
-            } else {
-                redirectUri = "https://www.goodjob.ai.kr/auth/callback";
             }
         } catch (IllegalArgumentException e) {
             log.warn("[OAUTH] failed to decode or validate state, fallback to default. state: {}", encodedState);
-            redirectUri = "https://www.goodjob.ai.kr/auth/callback";
         }
 
         if (!response.isCommitted()) {
@@ -114,7 +109,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         return uri != null &&
                 !uri.contains("\r") &&
                 !uri.contains("\n") &&
-                (uri.startsWith("https://localhost:5173") || uri.startsWith("https://www.goodjob.ai.kr"));  // http 아님!! https가 맞음
+                (uri.startsWith("https://localhost:5173") || uri.startsWith("https://www.goodjob.ai.kr"));
     }
 
     private OAuthProvider extractProvider(CustomOAuth2User user) {
@@ -123,5 +118,4 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         }
         throw new IllegalStateException("OAuth provider not found in user attributes");
     }
-
 }
