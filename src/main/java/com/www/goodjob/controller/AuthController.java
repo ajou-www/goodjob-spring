@@ -155,6 +155,12 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response,
                                     @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        String email = userDetails.getEmail(); // 또는 getUsername()
+        logger.info("[LOGOUT] 요청자 email={}", email);
+
+        refreshTokenRedisService.deleteToken(email); // 여기에 대한 로그가 찍혀야 정상
+
         ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
                 .secure(true)
@@ -164,10 +170,9 @@ public class AuthController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
 
-        refreshTokenRedisService.deleteToken(userDetails.getUsername());
-
         return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
     }
+
 
     @Operation(
             summary = "회원 탈퇴 (refresh_token + 사용자 정보 삭제)",
