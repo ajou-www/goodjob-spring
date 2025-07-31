@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -30,6 +31,9 @@ public class Application {
     private ApplicationStatus applyStatus;
 
     private String note;
+
+    @Column(name = "apply_due_date")
+    private LocalDate applyDueDate;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

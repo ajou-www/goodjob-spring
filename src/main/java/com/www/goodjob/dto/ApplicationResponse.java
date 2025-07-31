@@ -19,4 +19,5 @@ public class ApplicationResponse {
     private ApplicationStatus applyStatus;
     private String note;
     private LocalDateTime createdAt;
+    private LocalDate applyDueDate;
 }

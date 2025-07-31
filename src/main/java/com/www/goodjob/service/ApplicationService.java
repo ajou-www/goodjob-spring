@@ -49,6 +49,7 @@ public class ApplicationService {
                             .applyStatus(app.getApplyStatus())
                             .note(app.getNote())
                             .createdAt(app.getCreatedAt())
+                            .applyDueDate(app.getApplyDueDate())
                             .build();
                 }).toList();
     }
@@ -62,6 +63,10 @@ public class ApplicationService {
         }
         if (dto.getNote() != null) {
             app.setNote(dto.getNote());
+        }
+
+        if (dto.getApplyDueDate() != null) {
+            app.setApplyDueDate(dto.getApplyDueDate());
         }
 
         applicationRepository.save(app);

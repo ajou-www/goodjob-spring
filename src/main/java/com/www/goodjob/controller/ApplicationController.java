@@ -91,9 +91,10 @@ public class ApplicationController {
                     ✅ 요청 예시:
                     PUT /applications?jobId=1769
                     {
-                      "applyStatus": "면접",
-                      "note": "1차 면접 완료, 분위기 좋았음"
-                    }
+                       "applyStatus": "면접",
+                       "note": "1차 면접 완료, 분위기 좋았음",
+                       "applyDueDate": "2025-08-15"
+                     }
                     
                     📌 상태(applyStatus)와 메모(note)는 각각 선택적으로 수정 가능합니다.
                     📌 jobId 기준으로 수정할 이력을 식별합니다.
