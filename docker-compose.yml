@@ -40,8 +40,12 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - ./redis-data:/data   # 현재 디렉토리에 redis-data 폴더 자동 생성됨
-    command: redis-server --appendonly yes --appendfilename "appendonly.aof"
+      - ./redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfilename appendonly.aof
+      --dir /data
     networks:
       - goodjob-net
 
