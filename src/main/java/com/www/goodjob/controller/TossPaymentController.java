@@ -135,13 +135,23 @@ public class TossPaymentController {
     public ResponseEntity<?> tempsave(HttpSession session,
                                       @RequestBody SaveAmountRequest req,
                                       @AuthenticationPrincipal CustomUserDetails userDetails) {
-        // 로그 기록
-        log.info("임시 결제 저장 - userId={}, orderId={}, amount={}",
-                userDetails.getUser().getId(), req.orderId(), req.amount());
+        try {
+            if (userDetails == null || userDetails.getUser() == null) {
+                log.error("[TOSS] 인증 정보 없음: userDetails is null");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증 필요");
+            }
 
-        session.setAttribute(req.orderId(), req.amount());
-        return ResponseEntity.ok("Payment temp save successful");
+            log.info("임시 결제 저장 - userId={}, orderId={}, amount={}",
+                    userDetails.getUser().getId(), req.orderId(), req.amount());
+
+            session.setAttribute(req.orderId(), req.amount());
+            return ResponseEntity.ok("Payment temp save successful");
+        } catch (Exception e) {
+            log.error("[TOSS] /saveAmount 처리 중 예외 발생", e);
+            return ResponseEntity.internalServerError().body("서버 내부 오류");
+        }
     }
+
 
     @Operation(
             summary = "결제 금액 검증",
