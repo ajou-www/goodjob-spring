@@ -57,7 +57,13 @@ public class TossPaymentController {
     public ResponseEntity<?> confirm(@RequestBody ConfirmPaymentRequest req,
                                      @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {
+            log.info("[TOSS] 결제 승인 요청: userId={}, orderId={}, paymentKey={}",
+                    userDetails.getUser().getId(), req.getOrderId(), req.getPaymentKey());
+
             var response = tossPaymentService.requestConfirm(req);
+
+            log.info("[TOSS] 응답 status: {}, body: {}", response.statusCode(), response.body());
+
             if (response.statusCode() != 200) {
                 return ResponseEntity.status(response.statusCode()).body(response.body());
             }
@@ -72,9 +78,11 @@ public class TossPaymentController {
             return ResponseEntity.ok(TossPaymentResponseDto.from(payment));
 
         } catch (Exception e) {
+            log.error("[TOSS] 결제 승인 처리 중 예외 발생", e);
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
+
 
     @Operation(
             summary = "Toss 결제 취소",
