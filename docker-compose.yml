@@ -31,6 +31,19 @@ services:
       - EC2_HOST=${EC2_HOST}
     networks:
       - goodjob-net
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis-data:/data   # 현재 디렉토리에 redis-data 폴더 자동 생성됨
+    command: redis-server --appendonly yes --appendfilename "appendonly.aof"
+    networks:
+      - goodjob-net
 
 networks:
   goodjob-net:
