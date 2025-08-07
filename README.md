@@ -75,7 +75,5 @@ open build/reports/jacoco/test/html/index.html
 기본 JUnit Test결과도 테스트 커버리지는 없지만 Web View로 확인 가능
 
 ```
-
-
 open build/reports/tests/test/index.html
 ```
