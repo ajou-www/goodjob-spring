@@ -52,7 +52,7 @@ public class SecurityConfig {
                 .logout(logout -> logout.disable())  // 디폴트 로그아웃 설정 해제
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/", "/auth/login", "/auth/callback-endpoint", "/auth/token/refresh",
+                                "/", "/auth/login", "/auth/callback-endpoint", "/auth/token/refresh","/auth/master-token",
                                 "/oauth2/**", "/swagger-ui/**", "/swagger-ui.html",
                                 "/v3/api-docs/**", "/s3/**", "/job-update/**", "/rec/**",
                                 "/jobs/**", "/error", "/actuator", "/actuator/prometheus", "/user/me", "/admin/**", "/payments/**", "/favicon.ico"
