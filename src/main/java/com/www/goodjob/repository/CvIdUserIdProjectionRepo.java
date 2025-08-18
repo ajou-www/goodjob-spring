@@ -1,15 +1,13 @@
+// src/main/java/com/www/goodjob/repository/CvIdUserIdProjectionRepo.java
 package com.www.goodjob.repository;
 
+import com.www.goodjob.domain.Cv;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.Repository;
 
 import java.util.List;
 
-/**
- * CV id와 user id를 한 번에 뽑아오는 투영용 레포.
- * 엔티티 매핑과 무관하게 네이티브로 가져와 안전하게 사용.
- */
-public interface CvIdUserIdProjectionRepo extends Repository<Object, Long> {
+public interface CvIdUserIdProjectionRepo extends JpaRepository<Cv, Long> {
 
     interface CvIdUserIdProjection {
         Long getCvId();
@@ -17,9 +15,9 @@ public interface CvIdUserIdProjectionRepo extends Repository<Object, Long> {
     }
 
     @Query(value = """
-        SELECT c.id       AS cvId,
-               c.user_id  AS userId
+        SELECT c.id      AS cvId,
+               c.user_id AS userId
         FROM cv c
-    """, nativeQuery = true)
+        """, nativeQuery = true)
     List<CvIdUserIdProjection> findAllCvIdUserId();
 }
