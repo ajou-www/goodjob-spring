@@ -7,9 +7,6 @@ import lombok.*;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 public class AlarmJobRequest {
-    @NotNull
-    private Long jobId;
-
-    @NotNull @Min(1)
-    private Integer rank;
+    @NotNull private Long jobId;
+    @NotNull @Min(1) private Integer rank;
 }

@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface AlarmJobRepository extends JpaRepository<AlarmJob, AlarmJobId> {
-    List<AlarmJob> findByAlarm_IdOrderByRankAsc(Long alarmId);
-    void deleteByAlarm_Id(Long alarmId);
+    List<AlarmJob> findByAlarmIdOrderByRankAsc(Long alarmId);
+    void deleteByAlarmId(Long alarmId);
 }

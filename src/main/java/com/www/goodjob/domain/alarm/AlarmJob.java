@@ -6,40 +6,43 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Getter @Setter
-@Builder
 @NoArgsConstructor @AllArgsConstructor
+@Builder
 @Entity
-@Table(name = "alarm_job",
+@Table(
+        name = "alarm_job",
         indexes = {
                 @Index(name = "idx_alarm_job_rank", columnList = "alarm_id, `rank`"),
                 @Index(name = "idx_alarm_job_job", columnList = "job_id")
-        })
+        }
+)
+@IdClass(AlarmJobId.class)
 public class AlarmJob {
 
-    @EmbeddedId
-    private AlarmJobId id;
+    @Id
+    @Column(name = "alarm_id", nullable = false)
+    private Long alarmId;
 
-    @MapsId("alarmId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "alarm_id", nullable = false)
-    private Alarm alarm;
-
-    /** Job 엔터티는 의존하지 않고 ID만 보관합니다 */
-    @Column(name = "job_id", nullable = false, insertable = false, updatable = false)
+    @Id
+    @Column(name = "job_id", nullable = false)
     private Long jobId;
 
-    /** MySQL에서 예약어 가능성 → 백틱 이스케이프 */
     @Column(name = "`rank`", nullable = false)
     private Integer rank;
 
     @Column(name = "clicked_at")
     private LocalDateTime clickedAt;
 
-    public static AlarmJob of(Long jobId, int rank) {
-        AlarmJob aj = new AlarmJob();
-        aj.setId(new AlarmJobId(null, jobId)); // alarmId는 persist 시점에 주입
-        aj.setJobId(jobId);
-        aj.setRank(rank);
-        return aj;
+    /** 조회 편의용(읽기 전용 연관) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "alarm_id", insertable = false, updatable = false)
+    private Alarm alarm;
+
+    public static AlarmJob of(Long alarmId, Long jobId, int rank) {
+        return AlarmJob.builder()
+                .alarmId(alarmId)
+                .jobId(jobId)
+                .rank(rank)
+                .build();
     }
 }

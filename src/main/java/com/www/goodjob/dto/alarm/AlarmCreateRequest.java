@@ -15,7 +15,7 @@ import java.util.List;
 @Builder
 public class AlarmCreateRequest {
 
-    /** 관리자가 다른 사용자에게 알림 생성할 때 사용. 일반 사용자는 null 허용 → 서버가 principal로 채움 */
+    /** 비관리자는 null 허용. 서버가 principal로 채움 */
     private Long userId;
 
     @NotBlank
@@ -24,10 +24,8 @@ public class AlarmCreateRequest {
     @NotNull
     private AlarmType type;
 
-    /** 전역 dedupe. 주어지면 중복 차단 */
     private String dedupeKey;
 
-    /** 기본값 QUEUED */
     @Builder.Default
     private AlarmStatus status = AlarmStatus.QUEUED;
 

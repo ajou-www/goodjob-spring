@@ -26,6 +26,20 @@ public class CustomUserDetails implements UserDetails {
         return user.getEmail();
     }
 
+    /** 현재 사용자 역할을 바로 반환 (있으면 편함) */
+    public com.www.goodjob.enums.UserRole getRole() {
+        return user.getRole();
+    }
+
+    /** ADMIN 여부 체크 (컨트롤러에서 principal.isAdmin() 으로 사용) */
+    public boolean isAdmin() {
+        // getAuthorities()는 ROLE_ 접두사를 달아주고 있지만,
+        // 도메인 엔티티의 role enum을 직접 확인하는 편이 더 직접적/빠릅니다.
+        return user.getRole() == com.www.goodjob.enums.UserRole.ADMIN;
+        // 또는 권한 기반으로 확인하고 싶다면:
+        // return getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
@@ -45,4 +59,5 @@ public class CustomUserDetails implements UserDetails {
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
     @Override public boolean isEnabled() { return true; }
+
 }

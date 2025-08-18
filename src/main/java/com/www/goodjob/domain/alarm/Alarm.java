@@ -7,21 +7,21 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Getter @Setter
-@Builder
 @NoArgsConstructor @AllArgsConstructor
+@Builder
 @Entity
-@Table(name = "alarm",
+@Table(
+        name = "alarm",
         indexes = {
                 @Index(name = "idx_alarm_user_created", columnList = "user_id, created_at"),
                 @Index(name = "idx_alarm_user_unread", columnList = "user_id, is_read")
         },
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_alarm_dedupe", columnNames = "dedupe_key")
-        })
+        }
+)
 public class Alarm {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,19 +57,7 @@ public class Alarm {
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
 
-    @OneToMany(mappedBy = "alarm", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("rank ASC")
-    private List<AlarmJob> jobs = new ArrayList<>();
-
-    /** 편의 메서드 */
-    public void replaceJobs(List<AlarmJob> newJobs) {
-        this.jobs.clear();
-        if (newJobs != null) {
-            newJobs.forEach(j -> j.setAlarm(this));
-            this.jobs.addAll(newJobs);
-        }
-    }
-
+    /** 읽음 처리 간단 헬퍼 */
     public void markReadNow() {
         if (!this.read) {
             this.read = true;

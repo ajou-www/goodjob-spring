@@ -8,14 +8,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** 부분/전체 업데이트용 */
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class AlarmUpdateRequest {
     private String alarmText;
     private AlarmType type;
-    private String dedupeKey;     // 변경 시 유니크 제약 주의
+    private String dedupeKey;
     private AlarmStatus status;
     private LocalDateTime sentAt;
 
