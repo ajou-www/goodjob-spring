@@ -64,6 +64,11 @@ spring:
           max-idle: 8
           min-idle: 0
 
+  task:
+    scheduling:
+      pool:
+        size: 2
+
 jwt:
   secretKey: ${JWT_SECRET_KEY}
 
