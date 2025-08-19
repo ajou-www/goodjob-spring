@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Comparator;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +27,7 @@ public class AlarmService {
     /* CREATE */
     @Transactional
     public AlarmResponse create(Long actorUserId, boolean isAdmin, AlarmCreateRequest req) {
+        // ADMIN은 req.userId로 타 사용자 생성 가능, USER는 본인만
         Long targetUserId = (req.getUserId() != null ? req.getUserId() : actorUserId);
         if (!isAdmin && !targetUserId.equals(actorUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "다른 사용자에게 알림 생성 불가");
@@ -70,31 +70,49 @@ public class AlarmService {
         return toResponse(alarm);
     }
 
-    /* READ list */
+    /* READ list (USER: 본인만 / ADMIN: 전체) */
     @Transactional(readOnly = true)
-    public Page<AlarmResponse> getList(Long actorUserId, boolean isAdmin, Long userId,
+    public Page<AlarmResponse> getList(Long actorUserId, boolean isAdmin,
                                        Boolean unreadOnly, AlarmType type, Pageable pageable) {
-        Long targetUserId = (userId != null ? userId : actorUserId);
-        if (!isAdmin && !targetUserId.equals(actorUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 없음");
-        }
-
         Page<Alarm> page;
-        if (unreadOnly != null && type != null) {
-            page = alarmRepository.findByUserIdAndReadAndType(targetUserId, false, type, pageable);
-        } else if (unreadOnly != null) {
-            page = alarmRepository.findByUserIdAndRead(targetUserId, false, pageable);
-        } else if (type != null) {
-            page = alarmRepository.findByUserIdAndType(targetUserId, type, pageable);
+        if (isAdmin) {
+            // ADMIN: 전체 범위
+            if (Boolean.TRUE.equals(unreadOnly) && type != null) {
+                page = alarmRepository.findByReadAndType(false, type, pageable);
+            } else if (Boolean.TRUE.equals(unreadOnly)) {
+                page = alarmRepository.findByRead(false, pageable);
+            } else if (type != null) {
+                page = alarmRepository.findByType(type, pageable);
+            } else {
+                page = alarmRepository.findAll(pageable);
+            }
         } else {
-            page = alarmRepository.findByUserId(targetUserId, pageable);
+            // USER: 본인 소유만
+            page = findPageForUser(actorUserId, unreadOnly, type, pageable);
         }
+        return page.map(this::toResponse);
+    }
+
+    /* READ list (ADMIN: 특정 사용자 스코프 조회) */
+    @Transactional(readOnly = true)
+    public Page<AlarmResponse> getListForUser(Long targetUserId, boolean isAdmin,
+                                              Boolean unreadOnly, AlarmType type, Pageable pageable) {
+        if (!isAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 전용 기능");
+        }
+        Page<Alarm> page = findPageForUser(targetUserId, unreadOnly, type, pageable);
         return page.map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public long countUnread(Long actorUserId) {
         return alarmRepository.countByUserIdAndReadFalse(actorUserId);
+    }
+
+    /* ADMIN: 타 사용자 읽지 않은 개수 */
+    @Transactional(readOnly = true)
+    public long countUnreadByAdmin(Long targetUserId) {
+        return alarmRepository.countByUserIdAndReadFalse(targetUserId);
     }
 
     /* UPDATE (부분/전체) */
@@ -145,18 +163,13 @@ public class AlarmService {
     /* PATCH - read-all (my alarms) */
     @Transactional
     public long markAllRead(Long actorUserId) {
-        var page = alarmRepository.findByUserIdAndRead(actorUserId, false, Pageable.ofSize(500));
-        long updated = 0;
-        while (!page.isEmpty()) {
-            for (Alarm a : page.getContent()) {
-                a.markReadNow();
-                updated++;
-            }
-            if (page.hasNext()) {
-                page = alarmRepository.findByUserIdAndRead(actorUserId, false, page.nextPageable());
-            } else break;
-        }
-        return updated;
+        return markAllReadInternal(actorUserId);
+    }
+
+    /* ADMIN: read-all (target user) */
+    @Transactional
+    public long markAllReadByAdmin(Long targetUserId) {
+        return markAllReadInternal(targetUserId);
     }
 
     /* DELETE */
@@ -168,10 +181,40 @@ public class AlarmService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 없음");
         }
         alarmRepository.delete(alarm);
-        // alarm_job은 FK on delete cascade 이므로 자동 정리
+        // alarm_job은 FK on delete cascade
     }
 
-    /* DTO 변환: N+1 회피 위해 job은 Repo로 한 번에 로딩 */
+    /* ===== Private Helpers ===== */
+
+    private Page<Alarm> findPageForUser(Long userId, Boolean unreadOnly, AlarmType type, Pageable pageable) {
+        if (Boolean.TRUE.equals(unreadOnly) && type != null) {
+            return alarmRepository.findByUserIdAndReadAndType(userId, false, type, pageable);
+        } else if (Boolean.TRUE.equals(unreadOnly)) {
+            return alarmRepository.findByUserIdAndRead(userId, false, pageable);
+        } else if (type != null) {
+            return alarmRepository.findByUserIdAndType(userId, type, pageable);
+        } else {
+            return alarmRepository.findByUserId(userId, pageable);
+        }
+    }
+
+    @Transactional
+    protected long markAllReadInternal(Long userId) {
+        var page = alarmRepository.findByUserIdAndRead(userId, false, Pageable.ofSize(500));
+        long updated = 0;
+        while (!page.isEmpty()) {
+            for (Alarm a : page.getContent()) {
+                a.markReadNow();
+                updated++;
+            }
+            if (page.hasNext()) {
+                page = alarmRepository.findByUserIdAndRead(userId, false, page.nextPageable());
+            } else break;
+        }
+        return updated;
+    }
+
+    /* DTO 변환 */
     private AlarmResponse toResponse(Alarm alarm) {
         var jobs = alarmJobRepository.findByAlarmIdOrderByRankAsc(alarm.getId())
                 .stream()

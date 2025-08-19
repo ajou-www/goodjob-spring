@@ -19,4 +19,10 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
     boolean existsByDedupeKey(String dedupeKey);
 
     long countByUserIdAndReadFalse(Long userId);
+
+    Page<Alarm> findAll(Pageable pageable);
+    Page<Alarm> findByRead(boolean read, Pageable pageable);
+    Page<Alarm> findByType(AlarmType type, Pageable pageable);
+    Page<Alarm> findByReadAndType(boolean read, AlarmType type, Pageable pageable);
+
 }
