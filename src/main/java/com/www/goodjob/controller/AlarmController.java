@@ -30,24 +30,6 @@ public class AlarmController {
     private final AlarmService alarmService;
 
     @Operation(
-            summary = "[USER] 알림 생성(본인)",
-            description = """
-            - 본인 소유 알림만 생성
-            - ADMIN은 관리자 전용 API(/admin/alarms)를 사용하세요
-            """
-    )
-    @PostMapping
-    @PreAuthorize("hasAnyRole('USER','ADMIN')")
-    public ResponseEntity<AlarmResponse> create(
-            @AuthenticationPrincipal CustomUserDetails principal,
-            @Valid @RequestBody AlarmCreateRequest req
-    ) {
-        // 서비스단에서 req.userId가 있어도 무시하고 principal 기준으로 강제
-        var res = alarmService.create(principal.getId(), false, req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(res);
-    }
-
-    @Operation(
             summary = "[USER] 알림 목록 조회(본인)",
             description = "- 본인 소유만 조회, 필터: unreadOnly, type"
     )
