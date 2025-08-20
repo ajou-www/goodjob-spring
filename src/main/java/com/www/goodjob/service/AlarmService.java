@@ -258,6 +258,8 @@ public class AlarmService {
                 .dedupeKey(alarm.getDedupeKey())
                 .status(alarm.getStatus())
                 .sentAt(alarm.getSentAt())
+                .titleCode(alarm.getTitleCode())
+                .params(alarm.getPayload())
                 .jobs(jobs)
                 .build();
     }
