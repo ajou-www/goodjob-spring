@@ -2,7 +2,7 @@ package com.www.goodjob.repository;
 
 import com.www.goodjob.domain.Application;
 import com.www.goodjob.domain.User;
-import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
