@@ -105,9 +105,17 @@ public class RecommendScoreAutoScheduler {
                 jobs.add(new AlarmJobRequest(h.getId(), rank++));
             }
 
+            String titleCode = "CV_MATCH_REALTIME_90";
+            Map<String,Object> params = Map.of("count", hits.size(), "threshold", THRESHOLD);
+
             var alarm = alarmCommandService.createIfNotExists(
-                    userId, text, AlarmType.CV_MATCH, dedupeKey, now, jobs
+                    userId,
+                    "새로 등록된 추천 공고 %d건 (%.0f점↑)".formatted(hits.size(), THRESHOLD),
+                    AlarmType.CV_MATCH,
+                    dedupeKey, now, jobs,
+                    titleCode, params
             );
+
             if (alarm != null) usersNotified++;
         }
 

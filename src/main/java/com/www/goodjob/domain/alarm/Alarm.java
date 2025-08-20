@@ -1,5 +1,7 @@
 package com.www.goodjob.domain.alarm;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.www.goodjob.enums.AlarmStatus;
 import com.www.goodjob.enums.AlarmType;
 import jakarta.persistence.*;
@@ -7,6 +9,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
@@ -62,6 +65,31 @@ public class Alarm {
         if (!this.read) {
             this.read = true;
             this.readAt = LocalDateTime.now();
+        }
+    }
+
+    @Column(name = "title_code")
+    private String titleCode;
+
+    @Convert(converter = JsonMapConverter.class)
+    @Column(name = "payload_json", columnDefinition = "TEXT")
+    private Map<String, Object> payload;
+
+    @Converter(autoApply = false)
+    public static class JsonMapConverter implements AttributeConverter<Map<String,Object>, String> {
+        private static final ObjectMapper OM = new ObjectMapper();
+
+        @Override
+        public String convertToDatabaseColumn(Map<String,Object> attribute) {
+            try { return attribute == null ? null : OM.writeValueAsString(attribute); }
+            catch (Exception e) { throw new IllegalArgumentException(e); }
+        }
+
+        @Override
+        public Map<String,Object> convertToEntityAttribute(String dbData) {
+            try {
+                return dbData == null ? null : OM.readValue(dbData, new TypeReference<Map<String,Object>>(){});
+            } catch (Exception e) { throw new IllegalArgumentException(e); }
         }
     }
 }

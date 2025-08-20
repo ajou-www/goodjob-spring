@@ -30,12 +30,10 @@ public class AlarmCommandService {
      * - jobs는 rank 오름차순/중복 제거 후 batch 저장
      */
     @Transactional
-    public Alarm createIfNotExists(Long userId,
-                                   String text,
-                                   AlarmType type,
-                                   String dedupeKey,
-                                   LocalDateTime sentAt,
-                                   List<AlarmJobRequest> jobs) {
+    public Alarm createIfNotExists(Long userId, String text, AlarmType type,
+                                   String dedupeKey, LocalDateTime sentAt,
+                                   List<AlarmJobRequest> jobs,
+                                   String titleCode, Map<String,Object> params) {
 
         // 기본값 방어
         if (text == null || text.isBlank()) {
@@ -55,10 +53,12 @@ public class AlarmCommandService {
                 .userId(userId)
                 .alarmText(text)
                 .type(type)
-                .dedupeKey(effectiveDedupe)   // uk_alarm_dedupe
+                .dedupeKey(effectiveDedupe)
                 .status(AlarmStatus.QUEUED)
                 .sentAt(sentAt != null ? sentAt : LocalDateTime.now())
                 .read(false)
+                .titleCode(titleCode)
+                .payload(params)
                 .build();
 
         try {

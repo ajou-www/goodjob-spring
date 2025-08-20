@@ -60,9 +60,17 @@ public class RecommendTopNAlarmScheduler {
                 jobs.add(new AlarmJobRequest(r.getJobId(), rank++));
             }
 
+            String titleCode = "CV_MATCH_TOPN";
+            Map<String,Object> params = Map.of("topN", items.size());
+
             var alarm = alarmCommandService.createIfNotExists(
-                    userId, text, AlarmType.CV_MATCH, key, now, jobs
+                    userId,
+                    "오늘의 추천 공고 TOP " + items.size(),
+                    AlarmType.CV_MATCH,
+                    key, now, jobs,
+                    titleCode, params
             );
+
             if (alarm != null) generated++;
         }
 

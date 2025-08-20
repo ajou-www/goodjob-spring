@@ -78,9 +78,24 @@ public class ApplicationDueAlarmScheduler {
             }
 
             String dedupeKey = "APPLY_DUE:%d:%s".formatted(userId, today);
+
+            long total = d0 + d1 + d2;
+            String titleCode = "APPLY_DUE_SUMMARY";
+            Map<String,Object> params = new HashMap<>();
+            params.put("total", total);
+            params.put("d0", d0);
+            params.put("d1", d1);
+            params.put("d2", d2);
+            params.put("windowDays", DUE_END_OFFSET); // 선택
+
             var alarm = alarmCommandService.createIfNotExists(
-                    userId, text, AlarmType.APPLY_DUE, dedupeKey, now, jobs
+                    userId,
+                    /* alarmText(백업용) */ "지원 마감 임박 %d건 (D0:%d, D1:%d, D2:%d)".formatted(total,d0,d1,d2),
+                    AlarmType.APPLY_DUE,
+                    dedupeKey, now, jobs,
+                    titleCode, params
             );
+
             if (alarm != null) generated++;
         }
 
