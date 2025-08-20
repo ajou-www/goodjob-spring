@@ -30,7 +30,8 @@ public class RecommendTopNAlarmScheduler {
     private final AlarmCommandService alarmCommandService;
 
     /** 매일 10:00 KST */
-    @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
+    // @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 30 23 * * *", zone = "Asia/Seoul")
     public void run() {
         List<RecommendScoreProjection> list = rsRepo.findTopNPerUser(TOP_N);
 
