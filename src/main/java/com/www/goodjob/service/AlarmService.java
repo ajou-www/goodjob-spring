@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 
 @Service
@@ -212,6 +213,27 @@ public class AlarmService {
             } else break;
         }
         return updated;
+    }
+
+    @Transactional
+    public void markJobClicked(Long actorUserId, boolean isAdmin, Long alarmId, Long jobId) {
+        var alarm = alarmRepository.findById(alarmId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "알림 없음"));
+        if (!isAdmin && !alarm.getUserId().equals(actorUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 없음");
+        }
+
+        var alarmJob = alarmJobRepository.findByAlarmIdAndJobId(alarmId, jobId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "알림-공고 매핑 없음"));
+
+        if (alarmJob.getClickedAt() == null) {
+            alarmJob.setClickedAt(LocalDateTime.now());
+        }
+
+        // 선택 정책: 공고 클릭하면 알림도 읽음 처리하고 싶다면 함께 처리
+        if (!alarm.isRead()) {
+            alarm.markReadNow();
+        }
     }
 
     /* DTO 변환 */

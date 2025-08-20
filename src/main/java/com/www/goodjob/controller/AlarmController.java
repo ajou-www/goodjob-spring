@@ -34,7 +34,7 @@ public class AlarmController {
 
     @Operation(
             summary = "[USER] 알림 목록 조회(본인)",
-            description = "- 본인 소유만 조회, 필터: unreadOnly, type"
+            description = "본인 소유만 조회, 필터: unreadOnly, type; unreadOnly, type 없이 page, size만 넣고 조회 가능"
     )
     @GetMapping
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
@@ -110,15 +110,20 @@ public class AlarmController {
     }
 
 
-    @Operation(summary = "[USER] 읽지 않은 알림 개수(본인)")
+    @Operation(
+            summary = "[USER] 읽지 않은 알림 개수(본인)",
+            description = "본인 소유 알림 중 읽지 않은 개수(Long) 반환"
+    )
     @GetMapping("/unread-count")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public long unreadCount(@AuthenticationPrincipal CustomUserDetails principal) {
-        // 본인 기준 카운트
         return alarmService.countUnread(principal.getId());
     }
 
-    @Operation(summary = "[USER] 알림 읽음 처리(단건, 본인)")
+    @Operation(
+            summary = "[USER] 알림 읽음 처리(단건, 본인)",
+            description = "지정 알림을 읽음 처리(read=true, readAt 기록); 이미 읽음이어도 204 반환(멱등)"
+    )
     @PatchMapping("/{alarmId}/read")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public ResponseEntity<Void> markRead(
@@ -129,7 +134,10 @@ public class AlarmController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "[USER] 모든 알림 읽음 처리(본인)")
+    @Operation(
+            summary = "[USER] 모든 알림 읽음 처리(본인)",
+            description = "본인 소유의 미읽음 알림을 일괄 읽음 처리하고 갱신된 개수(Long) 반환"
+    )
     @PatchMapping("/read-all")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public ResponseEntity<Long> markAllRead(@AuthenticationPrincipal CustomUserDetails principal) {
@@ -137,7 +145,10 @@ public class AlarmController {
         return ResponseEntity.ok(updated);
     }
 
-    @Operation(summary = "[USER] 알림 삭제(본인)")
+    @Operation(
+            summary = "[USER] 알림 삭제(본인)",
+            description = "지정 알림을 삭제; 본인 소유만 가능하며 성공 시 204 반환"
+    )
     @DeleteMapping("/{alarmId}")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public ResponseEntity<Void> delete(
@@ -147,4 +158,18 @@ public class AlarmController {
         alarmService.delete(principal.getId(), false, alarmId);
         return ResponseEntity.noContent().build();
     }
+
+
+    @Operation(summary = "[USER] 알림 내 공고 클릭 기록", description = "알림 상세의 특정 공고를 클릭하면 clickedAt을 기록합니다(멱등).")
+    @PatchMapping("/{alarmId}/jobs/{jobId}/click")
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    public ResponseEntity<Void> clickJob(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @Parameter(description = "알림 ID") @PathVariable Long alarmId,
+            @Parameter(description = "공고 ID") @PathVariable Long jobId
+    ) {
+        alarmService.markJobClicked(principal.getId(), false, alarmId, jobId);
+        return ResponseEntity.noContent().build();
+    }
+
 }
