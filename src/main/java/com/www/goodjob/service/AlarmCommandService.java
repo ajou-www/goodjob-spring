@@ -8,12 +8,14 @@ import com.www.goodjob.enums.AlarmType;
 import com.www.goodjob.repository.AlarmJobRepository;
 import com.www.goodjob.repository.AlarmRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,36 +25,86 @@ public class AlarmCommandService {
     private final AlarmJobRepository alarmJobRepository;
 
     /**
-     * dedupeKey로 중복 방지하며 알림을 생성하고 관련 job 매핑을 저장한다.
-     * jobs는 rank 오름차순으로 저장됨.
+     * dedupeKey 유니크 제약을 활용해 중복을 원자적으로 방지하며 알림을 생성.
+     * - 중복이면 null 반환(현 정책 유지)
+     * - jobs는 rank 오름차순/중복 제거 후 batch 저장
      */
     @Transactional
-    public Alarm createIfNotExists(Long userId, String text, AlarmType type,
-                                   String dedupeKey, LocalDateTime sentAt,
+    public Alarm createIfNotExists(Long userId,
+                                   String text,
+                                   AlarmType type,
+                                   String dedupeKey,
+                                   LocalDateTime sentAt,
                                    List<AlarmJobRequest> jobs) {
-        if (dedupeKey != null && !dedupeKey.isBlank()
-                && alarmRepository.existsByDedupeKey(dedupeKey)) {
-            return null; // 이미 같은 알림이 있다면 생성 스킵
-        }
 
-        Alarm alarm = Alarm.builder()
+        // 기본값 방어
+        if (text == null || text.isBlank()) {
+            throw new IllegalArgumentException("alarmText must not be blank");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
+        // dedupeKey가 비어있으면 스케줄러단에서 생성해 오는 게 베스트.
+        // 그래도 안전망으로 비어있을 시 유저/타입/시각 기반 임시 키를 생성해 충돌 최소화.
+        String effectiveDedupe = (dedupeKey != null && !dedupeKey.isBlank())
+                ? dedupeKey
+                : ("AUTO:%d:%s:%s".formatted(userId, type.name(),
+                Optional.ofNullable(sentAt).orElse(LocalDateTime.now()).withSecond(0).withNano(0)));
+
+        Alarm toSave = Alarm.builder()
                 .userId(userId)
                 .alarmText(text)
                 .type(type)
-                .dedupeKey(dedupeKey)
+                .dedupeKey(effectiveDedupe)   // uk_alarm_dedupe
                 .status(AlarmStatus.QUEUED)
-                .sentAt(sentAt)
+                .sentAt(sentAt != null ? sentAt : LocalDateTime.now())
                 .read(false)
                 .build();
-        Alarm saved = alarmRepository.save(alarm);
 
-        if (jobs != null && !jobs.isEmpty()) {
-            jobs.stream()
-                    .sorted(Comparator.comparingInt(AlarmJobRequest::getRank))
-                    .forEach(j -> alarmJobRepository.save(
-                            AlarmJob.of(saved.getId(), j.getJobId(), j.getRank())
-                    ));
+        try {
+            Alarm saved = alarmRepository.save(toSave);
+            persistJobs(saved.getId(), jobs);
+            return saved;
+        } catch (DataIntegrityViolationException dup) {
+            // 다른 트랜잭션에서 먼저 삽입됨(uk_alarm_dedupe 충돌)
+            // 정책: "중복이면 스킵" → null 반환 (스케줄러가 generated++ 하지 않도록)
+            // 만약 기존 엔티티를 반환하고 싶다면 아래를 사용:
+            // return alarmRepository.findByDedupeKey(effectiveDedupe).orElse(null);
+            return null;
         }
-        return saved;
+    }
+
+    /** jobs 정리(중복 jobId/랭크, null 제거) 후 batch 저장 */
+    private void persistJobs(Long alarmId, List<AlarmJobRequest> jobs) {
+        if (jobs == null || jobs.isEmpty()) return;
+
+        // 1) null 제거
+        List<AlarmJobRequest> cleaned = jobs.stream()
+                .filter(Objects::nonNull)
+                .filter(j -> j.getJobId() != null && j.getRank() != null)
+                .toList();
+
+        if (cleaned.isEmpty()) return;
+
+        // 2) 같은 jobId가 여러 번 온 경우: 더 낮은 rank(우선순위 높은)만 남김
+        Map<Long, AlarmJobRequest> byJob =
+                cleaned.stream()
+                        .collect(Collectors.toMap(
+                                AlarmJobRequest::getJobId,
+                                Function.identity(),
+                                (a, b) -> a.getRank() <= b.getRank() ? a : b,
+                                LinkedHashMap::new));
+
+        // 3) rank 기준 정렬
+        List<AlarmJobRequest> sorted = byJob.values().stream()
+                .sorted(Comparator.comparingInt(AlarmJobRequest::getRank))
+                .toList();
+
+        // 4) 엔티티 변환 후 batch 저장
+        List<AlarmJob> entities = sorted.stream()
+                .map(j -> AlarmJob.of(alarmId, j.getJobId(), j.getRank()))
+                .toList();
+
+        alarmJobRepository.saveAll(entities);
     }
 }
