@@ -1,13 +1,14 @@
 package com.www.goodjob.repository;
 
+import com.www.goodjob.domain.Application;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
 
-public interface ApplicationDueRepository extends Repository<Object, Long> {
+public interface ApplicationDueRepository extends JpaRepository<Application, Long> {
 
     @Query(value = """
         SELECT 
@@ -20,7 +21,7 @@ public interface ApplicationDueRepository extends Repository<Object, Long> {
         JOIN jobs j ON j.id = a.job_id
         WHERE a.apply_due_date IS NOT NULL
           AND a.apply_due_date BETWEEN :start AND :end
-          /* 필요시 상태 필터 예시:
+          /* 필요시 상태 필터:
              AND a.apply_status IN ('준비중','지원','서류전형','코테','면접')
           */
         """, nativeQuery = true)
