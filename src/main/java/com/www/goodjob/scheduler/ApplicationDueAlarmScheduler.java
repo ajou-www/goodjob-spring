@@ -33,7 +33,7 @@ public class ApplicationDueAlarmScheduler {
 
     /** 매일 10:00 KST */
     // @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
-    @Scheduled(cron = "0 30 11 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 30 12 * * *", zone = "Asia/Seoul")
     public void run() {
         LocalDate today = LocalDate.now(ZONE);
         LocalDate start = today.plusDays(DUE_START_OFFSET);
