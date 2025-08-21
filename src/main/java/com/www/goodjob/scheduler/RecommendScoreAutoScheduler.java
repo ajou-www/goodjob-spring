@@ -31,8 +31,8 @@ public class RecommendScoreAutoScheduler {
     private static final String CURSOR_KEY = "cursor:recommend:lastRunAt"; // Redis 키
     private static final ZoneId  KST       = ZoneId.of("Asia/Seoul");
 
-    private static final int    TOP_K     = 50;    // CV별 상위 K개만 조회하여 필터
-    private static final double THRESHOLD = 90.0;  // 알림 임계치
+    private static final int    TOP_K     = 10;    // CV별 상위 K개만 조회하여 필터
+    private static final double THRESHOLD = 0.0;  // 알림 임계치
 
     private final StringRedisTemplate redis;
     private final JobLightRepository jobRepo;
