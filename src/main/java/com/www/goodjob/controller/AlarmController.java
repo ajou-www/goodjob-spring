@@ -1,19 +1,13 @@
 package com.www.goodjob.controller;
 
 import com.www.goodjob.dto.alarm.AlarmResponse;
-import com.www.goodjob.dto.alarm.AlarmUpdateRequest;
 import com.www.goodjob.enums.AlarmType;
 import com.www.goodjob.security.CustomUserDetails;
 import com.www.goodjob.service.AlarmService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,7 +28,12 @@ public class AlarmController {
 
     @Operation(
             summary = "[USER] 알림 목록 조회(본인)",
-            description = "본인 소유만 조회, 필터: unreadOnly, type; unreadOnly, type 없이 page, size만 넣고 조회 가능"
+            description = """
+                    본인 소유만 조회, 필터: unreadOnly, type; unreadOnly, type 없이 page, size만 넣고 조회 가능
+                    
+                    < 에러 >
+                    - 401: 인증 실패(토큰 누락/만료)
+                    """
     )
     @GetMapping
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
@@ -117,7 +116,7 @@ public class AlarmController {
                     }
                     ```
                     
-                    에러
+                    < 에러 >
                     - 401: 인증 실패(토큰 누락/만료)
                     - 403: 권한 없음(본인 소유 아님)
                     - 404: 알림 없음
@@ -135,7 +134,12 @@ public class AlarmController {
 
     @Operation(
             summary = "[USER] 읽지 않은 알림 개수(본인)",
-            description = "본인 소유 알림 중 읽지 않은 개수(Long) 반환"
+            description = """
+                    본인 소유 알림 중 읽지 않은 개수(Long) 반환
+                    
+                    < 에러 >
+                    - 401: 인증 실패(토큰 누락/만료)
+                    """
     )
     @GetMapping("/unread-count")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
@@ -145,7 +149,14 @@ public class AlarmController {
 
     @Operation(
             summary = "[USER] 알림 읽음 처리(단건, 본인)",
-            description = "지정 알림을 읽음 처리(read=true, readAt 기록); 이미 읽음이어도 204 반환(멱등)"
+            description = """
+                    지정 알림을 읽음 처리(read=true, readAt 기록); 이미 읽음이어도 204 반환(멱등)
+                    
+                    < 에러 >
+                    - 401: 인증 실패(토큰 누락/만료)
+                    - 403: 권한 없음(본인 소유 아님)
+                    - 404: 알림 없음
+                    """
     )
     @PatchMapping("/{alarmId}/read")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
@@ -159,7 +170,12 @@ public class AlarmController {
 
     @Operation(
             summary = "[USER] 모든 알림 읽음 처리(본인)",
-            description = "본인 소유의 미읽음 알림을 일괄 읽음 처리하고 갱신된 개수(Long) 반환"
+            description = """
+                    본인 소유의 미읽음 알림을 일괄 읽음 처리하고 갱신된 개수(Long) 반환
+                    
+                    < 에러 >
+                    - 401: 인증 실패(토큰 누락/만료)
+                    """
     )
     @PatchMapping("/read-all")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
@@ -170,7 +186,14 @@ public class AlarmController {
 
     @Operation(
             summary = "[USER] 알림 삭제(본인)",
-            description = "지정 알림을 삭제; 본인 소유만 가능하며 성공 시 204 반환"
+            description = """
+                    지정 알림을 삭제; 본인 소유만 가능하며 성공 시 204 반환
+                    
+                    < 에러 >
+                    - 401: 인증 실패(토큰 누락/만료)
+                    - 403: 권한 없음(본인 소유 아님)
+                    - 404: 알림 없음
+                    """
     )
     @DeleteMapping("/{alarmId}")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
@@ -183,7 +206,17 @@ public class AlarmController {
     }
 
 
-    @Operation(summary = "[USER] 알림 내 공고 클릭 기록", description = "알림 상세의 특정 공고를 클릭하면 clickedAt을 기록합니다(멱등).")
+    @Operation(
+            summary = "[USER] 알림 내 공고 클릭 기록",
+            description = """
+                    알림 상세의 특정 공고를 클릭하면 clickedAt을 기록합니다(멱등).
+                    
+                    < 에러 >
+                    - 401: 인증 실패(토큰 누락/만료)
+                    - 403: 권한 없음(본인 소유 아님)
+                    - 404: 알림 또는 공고 매핑 없음
+                    """
+    )
     @PatchMapping("/{alarmId}/jobs/{jobId}/click")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public ResponseEntity<Void> clickJob(
