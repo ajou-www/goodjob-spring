@@ -133,15 +133,15 @@ public class AlarmController {
     }
 
 
-//    @Operation(
-//            summary = "[USER] 읽지 않은 알림 개수(본인)",
-//            description = "본인 소유 알림 중 읽지 않은 개수(Long) 반환"
-//    )
-//    @GetMapping("/unread-count")
-//    @PreAuthorize("hasAnyRole('USER','ADMIN')")
-//    public long unreadCount(@AuthenticationPrincipal CustomUserDetails principal) {
-//        return alarmService.countUnread(principal.getId());
-//    }
+    @Operation(
+            summary = "[USER] 읽지 않은 알림 개수(본인)",
+            description = "본인 소유 알림 중 읽지 않은 개수(Long) 반환"
+    )
+    @GetMapping("/unread-count")
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    public long unreadCount(@AuthenticationPrincipal CustomUserDetails principal) {
+        return alarmService.countUnread(principal.getId());
+    }
 
     @Operation(
             summary = "[USER] 알림 읽음 처리(단건, 본인)",
