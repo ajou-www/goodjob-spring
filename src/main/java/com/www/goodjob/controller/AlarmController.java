@@ -29,7 +29,7 @@ public class AlarmController {
     @Operation(
             summary = "[USER] 알림 목록 조회(본인)",
             description = """
-                    본인 소유만 조회, 필터: unreadOnly, type; unreadOnly, type 없이 page, size만 넣고 조회 가능능
+                    본인 소유만 조회, 필터: unreadOnly, type; unreadOnly, type 없이 page, size만 넣고 조회 가능
                     
                     < 에러 >
                     - 401: 인증 실패(토큰 누락/만료)
