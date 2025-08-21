@@ -30,8 +30,7 @@ public class RecommendTopNAlarmScheduler {
     private final AlarmCommandService alarmCommandService;
 
     /** 매일 10:00 KST */
-    // @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
-    @Scheduled(cron = "0 50 23 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 30 10 * * *", zone = "Asia/Seoul")
     public void run() {
         List<RecommendScoreProjection> list = rsRepo.findTopNPerUser(TOP_N);
 
@@ -53,7 +52,9 @@ public class RecommendTopNAlarmScheduler {
 
             // dedupe: 날짜 단위 1회
             String key = "CV_MATCH_TOPN:%d:%s".formatted(userId, now.toLocalDate());
-            String text = "오늘의 추천 공고 TOP " + items.size();
+            String text = (THRESHOLD > 0)
+                    ? "오늘의 추천 공고 TOP %d (%.0f점 이상)".formatted(items.size(), THRESHOLD)
+                    : "오늘의 추천 공고 TOP %d".formatted(items.size());
 
             var jobs = new ArrayList<AlarmJobRequest>();
             int rank = 1;
@@ -61,12 +62,14 @@ public class RecommendTopNAlarmScheduler {
                 jobs.add(new AlarmJobRequest(r.getJobId(), rank++));
             }
 
-            String titleCode = "CV_MATCH_TOPN";
-            Map<String,Object> params = Map.of("topN", items.size());
+            String titleCode = "CV_MATCH_TODAY";
+            Map<String,Object> params = new HashMap<>();
+            params.put("topN", items.size());
+            params.put("threshold", THRESHOLD);
 
             var alarm = alarmCommandService.createIfNotExists(
                     userId,
-                    "오늘의 추천 공고 TOP " + items.size(),
+                    text,                   // "오늘의 추천 공고 TOP "
                     AlarmType.CV_MATCH,
                     key, now, jobs,
                     titleCode, params

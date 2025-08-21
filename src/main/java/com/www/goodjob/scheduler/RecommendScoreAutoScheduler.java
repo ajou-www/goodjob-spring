@@ -105,7 +105,7 @@ public class RecommendScoreAutoScheduler {
                 jobs.add(new AlarmJobRequest(h.getId(), rank++));
             }
 
-            String titleCode = "CV_MATCH_REALTIME_90";
+            String titleCode = "CV_MATCH_REALTIME";
             Map<String,Object> params = Map.of("count", hits.size(), "threshold", THRESHOLD);
 
             var alarm = alarmCommandService.createIfNotExists(

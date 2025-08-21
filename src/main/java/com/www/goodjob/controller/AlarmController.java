@@ -56,49 +56,72 @@ public class AlarmController {
     @Operation(
             summary = "[USER] 알림 단건 조회(본인)",
             description = """
-    ■ 접근
-    - USER/ADMIN 모두 호출 가능하나, 본인 소유 알림만 조회됩니다.
-
-    ■ 응답(AlarmResponse) 필드 요약
-    - id: 알림 ID
-    - createdAt: 생성 시각(예: 2025-08-19T01:00:08)
-    - alarmText: 알림 메시지(타이틀)
-    - read : 읽음 여부
-    - readAt: 읽은 시각
-    - type: CV_MATCH | APPLY_DUE | JOB_POPULAR
-    - sentAt: 발송 기준 시각(예: 매일 10시 알림)
-    - userId / dedupeKey / status: 내부 확인용(프론트 노출 불필요)
-    - jobs[]: 관련 공고 목록 (rank 오름차순)
-      · jobId: 공고 ID
-      · rank: 노출 순서(1부터)
-      · clickedAt: 알림에서 해당 공고 클릭한 시각(없으면 null)
-
-    ■ 200 응답 예시 (CV_MATCH)
-    ```
-    {
-      "id": 5,
-      "createdAt": "2025-08-19T01:00:08",
-      "alarmText": "오늘의 추천 공고 TOP 5",
-      "userId": 140,
-      "read": false,
-      "readAt": null,
-      "type": "CV_MATCH",
-      "dedupeKey": "CV_MATCH_TOPN:140:2025-08-19",
-      "status": "QUEUED",
-      "sentAt": "2025-08-19T10:00:03",
-      "jobs": [
-        { "jobId": 11460, "rank": 1, "clickedAt": null },
-        { "jobId": 7426,  "rank": 2, "clickedAt": null },
-        { "jobId": 3795,  "rank": 3, "clickedAt": null }
-      ]
-    }
-    ```
-
-    ■ 에러
-    - 401: 인증 실패(토큰 누락/만료)
-    - 403: 권한 없음(본인 소유가 아님)
-    - 404: 알림 없음
-    """
+                    접근: USER/ADMIN 모두 가능하나 본인 소유만 조회됩니다.
+                    
+                    응답 필드 요약
+                    - id: 알림 ID
+                    - createdAt: 생성 시각(예: 2025-08-19T01:00:08)
+                    - alarmText: 알림 메시지(백업용 타이틀) (ex. 오늘의 추천 공고 TOP 5 (90점 이상), 지원 마감 임박 1건 (D0:0, D1:1, D2:0) )
+                    - read : 읽음 여부 (true/false)
+                    - readAt : 읽은 시각
+                    - type: CV_MATCH | APPLY_DUE | JOB_POPULAR
+                    - sentAt: 발송 기준 시각
+                    - userId / dedupeKey / status: 내부 확인용
+                    - jobs[]: 관련 공고 목록 (rank 오름차순; jobId, rank, clickedAt 포함)
+                    - titleCode: 예) CV_MATCH_TODAY | APPLY_DUE_SUMMARY | CV_MATCH_REALTIME
+                    - params: 프론트 템플릿 바인딩용 변수 맵
+                    
+                    200 응답 예시 (CV_MATCH)
+                    ```json
+                    {
+                      "id": 40,
+                      "createdAt": "2025-08-20T16:00:15",
+                      "alarmText": "오늘의 추천 공고 TOP 5 (90점 이상)",
+                      "userId": 140,
+                      "read": true,
+                      "readAt": 2025-08-20 08:25:56,
+                      "type": "CV_MATCH",
+                      "dedupeKey": "CV_MATCH_TOPN:140:2025-08-21",
+                      "status": "QUEUED",
+                      "sentAt": "2025-08-21T01:00:06",
+                      "jobs": [
+                        { "jobId": 11460, "rank": 1, "clickedAt": null },
+                        { "jobId": 7426,  "rank": 2, "clickedAt": null },
+                        { "jobId": 3795,  "rank": 3, "clickedAt": null },
+                        { "jobId": 6149,  "rank": 4, "clickedAt": null },
+                        { "jobId": 5641,  "rank": 5, "clickedAt": null }
+                      ],
+                      "titleCode": "CV_MATCH_TODAY",
+                      "params": { "topN": 5, "threshold": 90.0 }
+                    }
+                    ```
+                    
+                    200 응답 예시 (APPLY_DUE)
+                    ```json
+                    {
+                      "id": 36,
+                      "createdAt": "2025-08-20T16:00:08",
+                      "alarmText": "지원 마감 임박 1건 (D0:0, D1:1, D2:0)",
+                      "userId": 140,
+                      "read": false,
+                      "readAt": null,
+                      "type": "APPLY_DUE",
+                      "dedupeKey": "APPLY_DUE:140:2025-08-21",
+                      "status": "QUEUED",
+                      "sentAt": "2025-08-21T01:00:02",
+                      "jobs": [
+                        { "jobId": 17530, "rank": 1, "clickedAt": null }
+                      ],
+                      "titleCode": "APPLY_DUE_SUMMARY",
+                      "params": { "total": 1, "d0": 0, "d1": 1, "d2": 0, "windowDays": 2 } // windowDays : 오늘(D0)부터 +windowDays까지를 스캔
+                    }
+                    ```
+                    
+                    에러
+                    - 401: 인증 실패(토큰 누락/만료)
+                    - 403: 권한 없음(본인 소유 아님)
+                    - 404: 알림 없음
+                    """
     )
     @GetMapping("/{alarmId}")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
