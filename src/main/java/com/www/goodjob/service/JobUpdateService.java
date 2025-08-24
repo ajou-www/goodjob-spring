@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class JobUpdateService {
 
     private final JobUpdateStatusRepository jobUpdateStatusRepository;
+    private final RecommendService recommendService;
 
     @Value("${FASTAPI_HOST}")
     private String fastapiHost;
@@ -31,7 +32,7 @@ public class JobUpdateService {
                 RestTemplate restTemplate = new RestTemplate();
                 String url = fastapiHost + "/save-es-jobs";
                 restTemplate.getForEntity(url, String.class);
-
+                recommendService.recomputeAllRecommendations(50);
                 // 작업 성공
                 status.setStatus("COMPLETED");
             } catch (Exception e) {

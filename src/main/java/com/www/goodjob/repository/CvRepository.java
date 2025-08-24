@@ -3,6 +3,7 @@ package com.www.goodjob.repository;
 import com.www.goodjob.domain.Cv;
 import com.www.goodjob.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,4 +18,7 @@ public interface CvRepository extends JpaRepository<Cv, Long> {
     Optional<Cv> findByUserIdAndFileName(Long userId, String fileName);
 
     void deleteAllByUser(User user);
+
+    @Query("select c.id from Cv c")
+    List<Long> findAllCvIds();
 }

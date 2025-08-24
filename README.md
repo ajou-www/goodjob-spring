@@ -42,7 +42,7 @@ docker network create redis-net
 # 2. Redis 실행 
 docker run -d \
   --name redis \
-  --network redis-net \
+  --network goodjob-net \
   -p 6379:6379 \
   redis \
   redis-server --bind 0.0.0.0 --protected-mode no
@@ -56,6 +56,20 @@ oliver006/redis_exporter \
 --redis.addr=redis://redis:6379 \
 --count-keys=db0:recommendation:* \
 --count-keys.db=0
+```
+
+redis slave(replica) issue
+```
+redis가 있는 서버 접속. (hunian)
+
+redis docker 접속.
+docker exec -it redis redis-cli
+
+redis 상태 확인.
+INFO replication
+
+replica라면 master로 다시 변경. 
+replicaof no one
 ```
 
 # Test (Jacoco)
