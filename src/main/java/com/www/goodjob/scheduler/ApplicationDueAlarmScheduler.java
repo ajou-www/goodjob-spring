@@ -32,8 +32,7 @@ public class ApplicationDueAlarmScheduler {
     private final AlarmCommandService alarmCommandService;
 
     /** 매일 10:00 KST */
-    // @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
-    @Scheduled(cron = "0 0 21 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
     public void run() {
         LocalDate today = LocalDate.now(ZONE);
         LocalDate start = today.plusDays(DUE_START_OFFSET);

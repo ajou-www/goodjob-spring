@@ -24,13 +24,13 @@ import java.util.stream.Collectors;
 public class RecommendTopNAlarmScheduler {
 
     private static final int    TOP_N     = 5;     // 사용자별 알림에 담을 개수
-    private static final double THRESHOLD = 0.0;   // 하한선 (필요시 90.0 등으로)
+    private static final double THRESHOLD = 10.0;   // 하한선 (필요시 90.0 등으로)
 
     private final RecommendScoreRepositorySupport rsRepo;
     private final AlarmCommandService alarmCommandService;
 
     /** 매일 10:00 KST */
-    @Scheduled(cron = "0 0 21 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
     public void run() {
         List<RecommendScoreProjection> list = rsRepo.findTopNPerUser(TOP_N);
 
