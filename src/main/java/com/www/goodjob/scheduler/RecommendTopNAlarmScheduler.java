@@ -33,7 +33,7 @@ public class RecommendTopNAlarmScheduler {
     private final AlarmCommandService alarmCommandService;
     private final CvRepository cvRepository;
 
-    @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 0 18 * * *", zone = "Asia/Seoul")
     public void run() {
         // (userId, cvId) 단위로 TOP N 가져오는 쿼리(지원 코드)는 프로젝트 구현에 맞춰 사용
         List<RecommendScoreProjection> list = rsRepo.findTopNPerUserAndCv(TOP_N);
