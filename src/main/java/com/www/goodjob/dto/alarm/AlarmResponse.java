@@ -23,6 +23,9 @@ public class AlarmResponse {
     private AlarmStatus status;
     private LocalDateTime sentAt;
 
+    private Long cvId;
+    private String cvTitle;
+
     private List<AlarmJobDto> jobs;
 
     String titleCode;                 // 예: "APPLY_DUE_SUMMARY", "CV_MATCH_TOPN", "CV_MATCH_REALTIME_90"

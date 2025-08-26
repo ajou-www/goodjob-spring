@@ -40,6 +40,12 @@ public class Alarm {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "cv_id")
+    private Long cvId;            // FK: cv.id (nullable; APPLY_DUE 등은 null)
+
+    @Column(name = "cv_title")
+    private String cvTitle;       // 스냅샷(삭제/변경 대비)
+
     @Column(name = "is_read", nullable = false)
     private boolean read;
 

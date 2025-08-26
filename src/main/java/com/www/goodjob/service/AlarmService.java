@@ -258,6 +258,11 @@ public class AlarmService {
                 .dedupeKey(alarm.getDedupeKey())
                 .status(alarm.getStatus())
                 .sentAt(alarm.getSentAt())
+
+                /* 추가 매핑 */
+                .cvId(alarm.getCvId())
+                .cvTitle(alarm.getCvTitle())
+
                 .titleCode(alarm.getTitleCode())
                 .params(alarm.getPayload())
                 .jobs(jobs)
