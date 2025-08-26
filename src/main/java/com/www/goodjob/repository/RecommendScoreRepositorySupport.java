@@ -24,5 +24,5 @@ public interface RecommendScoreRepositorySupport extends Repository<com.www.good
         FROM ranked
         WHERE rn <= :topN
     """, nativeQuery = true)
-    List<RecommendScoreProjection> findTopNPerUser(@Param("topN") int topN);
+    List<RecommendScoreProjection> findTopNPerUserAndCv(@Param("topN") int topN);
 }

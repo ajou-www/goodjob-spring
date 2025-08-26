@@ -4,6 +4,7 @@ import com.www.goodjob.domain.Cv;
 import com.www.goodjob.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,4 +22,8 @@ public interface CvRepository extends JpaRepository<Cv, Long> {
 
     @Query("select c.id from Cv c")
     List<Long> findAllCvIds();
+
+    @Query("select c.fileName from Cv c where c.id = :cvId")
+    Optional<String> findFileNameById(@Param("cvId") Long cvId);
+
 }

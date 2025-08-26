@@ -25,6 +25,26 @@ public class AlarmCommandService {
     private final AlarmJobRepository alarmJobRepository;
 
     /**
+     * CV 비의존 알림(APPLY_DUE 등)에서 사용하는 오버로드.
+     * 내부 확장 버전으로 위임하여 로직을 한곳에 유지.
+     */
+    @Transactional
+    public Alarm createIfNotExists(Long userId,
+                                   String text,
+                                   AlarmType type,
+                                   String dedupeKey,
+                                   LocalDateTime sentAt,
+                                   List<AlarmJobRequest> jobs,
+                                   String titleCode,
+                                   Map<String, Object> params) {
+        return createIfNotExists(
+                userId, text, type, dedupeKey, sentAt, jobs, titleCode, params,
+                null, // cvId 없음
+                null  // cvTitle 없음
+        );
+    }
+
+    /**
      * dedupeKey 유니크 제약을 활용해 중복을 원자적으로 방지하며 알림을 생성.
      * - 중복이면 null 반환(현 정책 유지)
      * - jobs는 rank 오름차순/중복 제거 후 batch 저장
@@ -33,7 +53,7 @@ public class AlarmCommandService {
     public Alarm createIfNotExists(Long userId, String text, AlarmType type,
                                    String dedupeKey, LocalDateTime sentAt,
                                    List<AlarmJobRequest> jobs,
-                                   String titleCode, Map<String,Object> params) {
+                                   String titleCode, Map<String,Object> params, Long cvId, String cvTitle) {
 
         // 기본값 방어
         if (text == null || text.isBlank()) {
@@ -59,6 +79,8 @@ public class AlarmCommandService {
                 .read(false)
                 .titleCode(titleCode)
                 .payload(params)
+                .cvId(cvId)
+                .cvTitle(cvTitle)
                 .build();
 
         try {

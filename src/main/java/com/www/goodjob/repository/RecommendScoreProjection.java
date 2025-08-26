@@ -6,4 +6,6 @@ public interface RecommendScoreProjection {
     Double getScore();
     String getTitle();
     String getCompanyName();
+
+    Long getCvId();
 }
