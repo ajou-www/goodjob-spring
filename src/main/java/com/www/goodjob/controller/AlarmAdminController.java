@@ -52,13 +52,13 @@ public class AlarmAdminController {
     @Operation(
             summary = "[ADMIN] 알림 생성(타 사용자, idempotent)",
             description = """
-                        - 요청 본문의 userId 기준으로 생성
-                        - dedupeKey가 비어있으면 타입/날짜(/cvId) 기반으로 자동 생성
-                        - CV_MATCH의 경우 cvId가 있으면 cvTitle이 비어도 CV.file_name으로 보완
-                        - 이미 동일 dedupeKey가 있으면 새로 만들지 않고 409를 반환(정책).
+                    - 요청 본문의 userId 기준으로 생성
+                    - dedupeKey가 비어있으면 타입/날짜(/cvId) 기반으로 자동 생성
+                    - CV_MATCH의 경우 cvId가 있으면 cvTitle이 비어도 CV.file_name으로 보완
+                    - 이미 동일 dedupeKey가 있으면 새로 만들지 않고 409를 반환(정책).
                     
-                        예시(JSON)
-                        ```json
+                    예시(JSON)
+                    ```json
                         {
                           "userId": 141,
                           "alarmText": "‘프론트’에 대한 오늘의 추천 공고 TOP 5 (10점 이상)",
@@ -72,7 +72,7 @@ public class AlarmAdminController {
                             { "jobId": 7426,  "rank": 2 }
                           ]
                         }
-                        ```
+                    ```
                     """
     )
     @ApiResponses({
