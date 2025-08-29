@@ -10,9 +10,14 @@ import com.www.goodjob.repository.AlarmRepository;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -118,4 +123,96 @@ public class AlarmCommandService {
 
         alarmJobRepository.saveAll(entities);
     }
+
+    private final PlatformTransactionManager txManager; // ⬅️ 반드시 주입
+
+    /** REQUIRES_NEW 트랜잭션 템플릿 */
+    private TransactionTemplate newTx() {
+        TransactionTemplate tpl = new TransactionTemplate(txManager);
+        tpl.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return tpl;
+    }
+
+    /** APPLY_DUE 등 CV 비의존 알림 생성 (중복 dedupeKey → 409) */
+    public Alarm createOrThrowDuplicateSimple(
+            Long userId,
+            String text,
+            AlarmType type,
+            String dedupeKey,
+            LocalDateTime sentAt,
+            List<AlarmJobRequest> jobs,
+            String titleCode,
+            Map<String, Object> params
+    ) {
+        return newTx().execute(status -> {
+            try {
+                Alarm toSave = baseAlarm(userId, text, type, dedupeKey, sentAt, titleCode, params, null, null);
+                Alarm saved = alarmRepository.saveAndFlush(toSave); // 제약 즉시 검사
+                persistJobs(saved.getId(), jobs);
+                return saved;
+            } catch (DataIntegrityViolationException e) {
+                status.setRollbackOnly(); // 내부 tx만 롤백
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate dedupeKey: " + dedupeKey);
+            }
+        });
+    }
+
+    /** CV_MATCH 등 CV 의존 알림 생성 (중복 dedupeKey → 409) */
+    public Alarm createOrThrowDuplicateWithCv(
+            Long userId,
+            String text,
+            AlarmType type,
+            String dedupeKey,
+            LocalDateTime sentAt,
+            List<AlarmJobRequest> jobs,
+            String titleCode,
+            Map<String, Object> params,
+            Long cvId,
+            String cvTitle
+    ) {
+        return newTx().execute(status -> {
+            try {
+                Alarm toSave = baseAlarm(userId, text, type, dedupeKey, sentAt, titleCode, params, cvId, cvTitle);
+                Alarm saved = alarmRepository.saveAndFlush(toSave);
+                persistJobs(saved.getId(), jobs);
+                return saved;
+            } catch (DataIntegrityViolationException e) {
+                status.setRollbackOnly();
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate dedupeKey: " + dedupeKey);
+            }
+        });
+    }
+
+    /* ================= Helpers ================= */
+
+    private static Alarm baseAlarm(
+            Long userId,
+            String text,
+            AlarmType type,
+            String dedupeKey,
+            LocalDateTime sentAt,
+            String titleCode,
+            Map<String, Object> params,
+            Long cvId,
+            String cvTitle
+    ) {
+        if (text == null || text.isBlank()) throw new IllegalArgumentException("alarmText must not be blank");
+        if (type == null) throw new IllegalArgumentException("type must not be null");
+        if (dedupeKey == null || dedupeKey.isBlank()) throw new IllegalArgumentException("dedupeKey must not be blank");
+
+        return Alarm.builder()
+                .userId(userId)
+                .alarmText(text)
+                .type(type)
+                .dedupeKey(dedupeKey)
+                .status(AlarmStatus.QUEUED)
+                .sentAt(sentAt != null ? sentAt : LocalDateTime.now())
+                .read(false)
+                .titleCode(titleCode)
+                .payload(params)
+                .cvId(cvId)
+                .cvTitle(cvTitle)
+                .build();
+    }
+
 }

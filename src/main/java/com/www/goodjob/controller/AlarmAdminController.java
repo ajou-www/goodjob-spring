@@ -8,11 +8,18 @@ import com.www.goodjob.enums.AlarmType;
 import com.www.goodjob.security.CustomUserDetails;
 import com.www.goodjob.service.AlarmCommandService;
 import com.www.goodjob.service.AlarmService;
-import com.www.goodjob.repository.CvRepository; // cvTitle 자동 보완용 (선택)
+import com.www.goodjob.repository.CvRepository;
+import com.www.goodjob.repository.AlarmRepository; // ⬅️ 추가
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;      // ⬅️ 권장
+import io.swagger.v3.oas.annotations.responses.ApiResponses;     // ⬅️ 권장
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -20,6 +27,7 @@ import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;       // ⬅️ 추가
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,18 +43,43 @@ public class AlarmAdminController {
 
     private final AlarmService alarmService;
     private final AlarmCommandService alarmCommandService;
-    private final CvRepository cvRepository; // req.cvTitle 비었을 때 file_name 보완
+    private final CvRepository cvRepository;
+    private final AlarmRepository alarmRepository; // ⬅️ 추가
 
     /** [ADMIN] 알림 생성(타 사용자) - idempotent */
     @Operation(
             summary = "[ADMIN] 알림 생성(타 사용자, idempotent)",
             description = """
-                - 요청 본문의 userId 기준으로 생성
-                - dedupeKey가 비어있으면 타입/날짜(/cvId) 기반으로 자동 생성
-                - CV_MATCH의 경우 cvId가 있으면 cvTitle이 비어도 CV.file_name으로 보완
-                - 이미 동일 dedupeKey가 있으면 새로 만들지 않고 409를 반환(정책). 필요시 '기존 알림 반환'으로 바꿀 수 있음.
-                """
+            - 요청 본문의 userId 기준으로 생성
+            - dedupeKey가 비어있으면 타입/날짜(/cvId) 기반으로 자동 생성
+            - CV_MATCH의 경우 cvId가 있으면 cvTitle이 비어도 CV.file_name으로 보완
+            - 이미 동일 dedupeKey가 있으면 새로 만들지 않고 409를 반환(정책). 필요시 '기존 알림 반환'으로 바꿀 수 있음.
+
+            예시(JSON)
+            ```json
+            {
+              "userId": 141,
+              "alarmText": "‘프론트’에 대한 오늘의 추천 공고 TOP 5 (10점 이상)",
+              "type": "CV_MATCH",
+              "titleCode": "CV_MATCH_TODAY",
+              "params": { "topN": 5, "threshold": 10.0, "cvId": 123, "cvTitle": "프론트" },
+              "cvId": 12,
+              "cvTitle": "프론트",
+              "jobs": [
+                { "jobId": 11460, "rank": 1 },
+                { "jobId": 7426,  "rank": 2 }
+              ]
+            }
+            ```
+        """
     )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "생성됨"),
+            @ApiResponse(responseCode = "409", description = "중복 dedupeKey"),
+            @ApiResponse(responseCode = "400", description = "요청 오류"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "권한 없음")
+    })
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AlarmResponse> adminCreate(
@@ -54,44 +87,43 @@ public class AlarmAdminController {
             @Valid @RequestBody AlarmCreateRequest req
     ) {
         if (req.getUserId() == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.badRequest().build();
         }
 
-        // dedupeKey 자동 생성 (없을 때)
         String dedupeKey = Optional.ofNullable(req.getDedupeKey())
                 .filter(s -> !s.isBlank())
-                .orElseGet(() -> buildDedupe(req.getType(), req.getUserId(), req.getCvId(),
-                        Optional.ofNullable(req.getSentAt()).orElse(LocalDateTime.now())));
+                .orElseGet(() -> buildDedupe(
+                        req.getType(), req.getUserId(), req.getCvId(),
+                        Optional.ofNullable(req.getSentAt()).orElse(LocalDateTime.now())
+                ));
 
-        // CV title 자동 보완 (CV_MATCH + cvId 존재 + cvTitle 비었을 때)
+        // 사전 중복 체크 → 즉시 409
+        if (alarmRepository.existsByDedupeKey(dedupeKey)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate dedupeKey: " + dedupeKey);
+        }
+
+        // CV title 자동 보완
         String cvTitle = req.getCvTitle();
         if (req.getType() == AlarmType.CV_MATCH && req.getCvId() != null &&
                 (cvTitle == null || cvTitle.isBlank())) {
             cvTitle = cvRepository.findFileNameById(req.getCvId()).orElse(null);
         }
 
-        var saved = alarmCommandService.createIfNotExists(
-                req.getUserId(),
-                req.getAlarmText(),
-                req.getType(),
-                dedupeKey,
-                req.getSentAt(),
-                req.getJobs(),
-                req.getTitleCode(),
-                req.getParams(),
-                req.getCvId(),
-                cvTitle
+        // 내부 생성(경쟁 상태는 내부 saveAndFlush에서 409 변환)
+        var saved = (req.getType() == AlarmType.CV_MATCH)
+                ? alarmCommandService.createOrThrowDuplicateWithCv(
+                req.getUserId(), req.getAlarmText(), req.getType(),
+                dedupeKey, req.getSentAt(), req.getJobs(),
+                req.getTitleCode(), req.getParams(),
+                req.getCvId(), cvTitle
+        )
+                : alarmCommandService.createOrThrowDuplicateSimple(
+                req.getUserId(), req.getAlarmText(), req.getType(),
+                dedupeKey, req.getSentAt(), req.getJobs(),
+                req.getTitleCode(), req.getParams()
         );
 
-        if (saved == null) {
-            // 중복 키로 이미 존재
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-            // 또는 기존 반환 정책으로 바꾸려면:
-            // var existing = alarmService.getByDedupeKey(dedupeKey); return ResponseEntity.status(CONFLICT).body(existing);
-        }
-
-        // 공용 변환 로직 사용(관리자 권한)
-        AlarmResponse res = alarmService.getOne(principal.getId(), true, saved.getId());
+        var res = alarmService.getOne(principal.getId(), true, saved.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
@@ -111,10 +143,8 @@ public class AlarmAdminController {
     ) {
         Pageable pageable = PageRequest.of(page, size);
         if (userId == null) {
-            // 전체 범위(관리자)
             return alarmService.getList(principalIdOrNull(), true, unreadOnly, type, pageable);
         }
-        // 특정 사용자 스코프
         return alarmService.getListForUser(userId, true, unreadOnly, type, pageable);
     }
 
@@ -137,7 +167,7 @@ public class AlarmAdminController {
             @Parameter(description = "대상 사용자 ID (옵션)") @RequestParam(required = false) Long userId
     ) {
         if (userId != null) return alarmService.countUnreadByAdmin(userId);
-        // 전체 미읽음 카운트가 필요하면 별도 repo 메서드가 있어야 함(확실하지 않음) → 임시로 0 반환
+        // 전체 미읽음 카운트가 필요하면 별도 repo 메서드 구현 필요
         return 0L;
     }
 
@@ -176,7 +206,7 @@ public class AlarmAdminController {
         return ResponseEntity.ok(updated);
     }
 
-    /** [ADMIN] 알림 삭제 */
+    /** [ADMIN] 알림 삭제(타 사용자) */
     @Operation(summary = "[ADMIN] 알림 삭제(타 사용자)")
     @DeleteMapping("/{alarmId}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -192,10 +222,10 @@ public class AlarmAdminController {
     @Operation(
             summary = "[ADMIN] 알림 내 공고 상세(점수 포함 가능)",
             description = """
-              - CV_MATCH: 알림의 cvId로 recommend_score에서 점수 포함
-              - 그 외(APPLY_DUE 등): score=0.0
-              - rank 순서 유지, 응답: ScoredJobDto[]
-            """
+          - CV_MATCH: 알림의 cvId로 recommend_score에서 점수 포함
+          - 그 외(APPLY_DUE 등): score=0.0
+          - rank 순서 유지, 응답: ScoredJobDto[]
+        """
     )
     @GetMapping("/{alarmId}/jobs")
     @PreAuthorize("hasRole('ADMIN')")
@@ -210,12 +240,13 @@ public class AlarmAdminController {
     private static String buildDedupe(AlarmType type, Long userId, Long cvId, LocalDateTime when) {
         LocalDate d = when.toLocalDate();
         return switch (type) {
-            case CV_MATCH -> "CV_MATCH_TOPN:%d:%d:%s".formatted(userId, cvId, d); // cvId 포함
+            case CV_MATCH -> (cvId != null)
+                    ? "CV_MATCH_TOPN:%d:%d:%s".formatted(userId, cvId, d)
+                    : "CV_MATCH_TOPN:%d:%s".formatted(userId, d); // ⬅️ cvId null 대비
             case APPLY_DUE -> "APPLY_DUE:%d:%s".formatted(userId, d);
             default -> "ALARM:%s:%d:%s".formatted(type.name(), userId, d);
         };
     }
 
-    // 일부 프레임워크에서 principal이 null일 수 있어 서명만 맞추는 더미 (전체 조회시 사용)
     private Long principalIdOrNull() { return null; }
 }
