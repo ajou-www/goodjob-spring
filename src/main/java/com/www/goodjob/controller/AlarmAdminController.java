@@ -46,32 +46,34 @@ public class AlarmAdminController {
     private final CvRepository cvRepository;
     private final AlarmRepository alarmRepository; // ⬅️ 추가
 
-    /** [ADMIN] 알림 생성(타 사용자) - idempotent */
+    /**
+     * [ADMIN] 알림 생성(타 사용자) - idempotent
+     */
     @Operation(
             summary = "[ADMIN] 알림 생성(타 사용자, idempotent)",
             description = """
-            - 요청 본문의 userId 기준으로 생성
-            - dedupeKey가 비어있으면 타입/날짜(/cvId) 기반으로 자동 생성
-            - CV_MATCH의 경우 cvId가 있으면 cvTitle이 비어도 CV.file_name으로 보완
-            - 이미 동일 dedupeKey가 있으면 새로 만들지 않고 409를 반환(정책). 필요시 '기존 알림 반환'으로 바꿀 수 있음.
-
-            예시(JSON)
-            ```json
-            {
-              "userId": 141,
-              "alarmText": "‘프론트’에 대한 오늘의 추천 공고 TOP 5 (10점 이상)",
-              "type": "CV_MATCH",
-              "titleCode": "CV_MATCH_TODAY",
-              "params": { "topN": 5, "threshold": 10.0, "cvId": 123, "cvTitle": "프론트" },
-              "cvId": 12,
-              "cvTitle": "프론트",
-              "jobs": [
-                { "jobId": 11460, "rank": 1 },
-                { "jobId": 7426,  "rank": 2 }
-              ]
-            }
-            ```
-        """
+                        - 요청 본문의 userId 기준으로 생성
+                        - dedupeKey가 비어있으면 타입/날짜(/cvId) 기반으로 자동 생성
+                        - CV_MATCH의 경우 cvId가 있으면 cvTitle이 비어도 CV.file_name으로 보완
+                        - 이미 동일 dedupeKey가 있으면 새로 만들지 않고 409를 반환(정책).
+                    
+                        예시(JSON)
+                        ```json
+                        {
+                          "userId": 141,
+                          "alarmText": "‘프론트’에 대한 오늘의 추천 공고 TOP 5 (10점 이상)",
+                          "type": "CV_MATCH",
+                          "titleCode": "CV_MATCH_TODAY",
+                          "params": { "topN": 5, "threshold": 10.0, "cvId": 123, "cvTitle": "프론트" },
+                          "cvId": 12,
+                          "cvTitle": "프론트",
+                          "jobs": [
+                            { "jobId": 11460, "rank": 1 },
+                            { "jobId": 7426,  "rank": 2 }
+                          ]
+                        }
+                        ```
+                    """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "생성됨"),
@@ -127,7 +129,9 @@ public class AlarmAdminController {
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
-    /** [ADMIN] 알림 목록(타 사용자) - userId 없으면 전체 조회 */
+    /**
+     * [ADMIN] 알림 목록(타 사용자) - userId 없으면 전체 조회
+     */
     @Operation(
             summary = "[ADMIN] 알림 목록 조회",
             description = "- userId 없으면 전체 조회, 있으면 해당 사용자 스코프 조회\n- 필터: unreadOnly, type"
@@ -148,7 +152,9 @@ public class AlarmAdminController {
         return alarmService.getListForUser(userId, true, unreadOnly, type, pageable);
     }
 
-    /** [ADMIN] 알림 단건 조회 */
+    /**
+     * [ADMIN] 알림 단건 조회
+     */
     @Operation(summary = "[ADMIN] 알림 단건 조회(타 사용자)")
     @GetMapping("/{alarmId}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -159,7 +165,9 @@ public class AlarmAdminController {
         return alarmService.getOne(principal.getId(), true, alarmId);
     }
 
-    /** [ADMIN] 읽지 않은 알림 개수 */
+    /**
+     * [ADMIN] 읽지 않은 알림 개수
+     */
     @Operation(summary = "[ADMIN] 읽지 않은 알림 개수(타 사용자 또는 전체)")
     @GetMapping("/unread-count")
     @PreAuthorize("hasRole('ADMIN')")
@@ -171,7 +179,9 @@ public class AlarmAdminController {
         return 0L;
     }
 
-    /** [ADMIN] 알림 수정 */
+    /**
+     * [ADMIN] 알림 수정
+     */
     @Operation(summary = "[ADMIN] 알림 수정(타 사용자)")
     @PutMapping("/{alarmId}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -183,7 +193,9 @@ public class AlarmAdminController {
         return alarmService.update(principal.getId(), true, alarmId, req);
     }
 
-    /** [ADMIN] 알림 읽음 처리 */
+    /**
+     * [ADMIN] 알림 읽음 처리
+     */
     @Operation(summary = "[ADMIN] 알림 읽음 처리(단건, 타 사용자)")
     @PatchMapping("/{alarmId}/read")
     @PreAuthorize("hasRole('ADMIN')")
@@ -195,7 +207,9 @@ public class AlarmAdminController {
         return ResponseEntity.noContent().build();
     }
 
-    /** [ADMIN] 모든 알림 읽음 처리(타 사용자) */
+    /**
+     * [ADMIN] 모든 알림 읽음 처리(타 사용자)
+     */
     @Operation(summary = "[ADMIN] 모든 알림 읽음 처리(타 사용자)")
     @PatchMapping("/read-all")
     @PreAuthorize("hasRole('ADMIN')")
@@ -206,7 +220,9 @@ public class AlarmAdminController {
         return ResponseEntity.ok(updated);
     }
 
-    /** [ADMIN] 알림 삭제(타 사용자) */
+    /**
+     * [ADMIN] 알림 삭제(타 사용자)
+     */
     @Operation(summary = "[ADMIN] 알림 삭제(타 사용자)")
     @DeleteMapping("/{alarmId}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -218,14 +234,16 @@ public class AlarmAdminController {
         return ResponseEntity.noContent().build();
     }
 
-    /** [ADMIN] 알림 내 공고 상세(점수 포함 가능) — 유저 버전과 동일 스키마 */
+    /**
+     * [ADMIN] 알림 내 공고 상세(점수 포함 가능) — 유저 버전과 동일 스키마
+     */
     @Operation(
             summary = "[ADMIN] 알림 내 공고 상세(점수 포함 가능)",
             description = """
-          - CV_MATCH: 알림의 cvId로 recommend_score에서 점수 포함
-          - 그 외(APPLY_DUE 등): score=0.0
-          - rank 순서 유지, 응답: ScoredJobDto[]
-        """
+                      - CV_MATCH: 알림의 cvId로 recommend_score에서 점수 포함
+                      - 그 외(APPLY_DUE 등): score=0.0
+                      - rank 순서 유지, 응답: ScoredJobDto[]
+                    """
     )
     @GetMapping("/{alarmId}/jobs")
     @PreAuthorize("hasRole('ADMIN')")
@@ -236,7 +254,9 @@ public class AlarmAdminController {
         return ResponseEntity.ok(alarmService.getJobsWithOptionalScores(principal.getId(), true, alarmId));
     }
 
-    /** dedupeKey 생성 규칙 */
+    /**
+     * dedupeKey 생성 규칙
+     */
     private static String buildDedupe(AlarmType type, Long userId, Long cvId, LocalDateTime when) {
         LocalDate d = when.toLocalDate();
         return switch (type) {
@@ -248,5 +268,7 @@ public class AlarmAdminController {
         };
     }
 
-    private Long principalIdOrNull() { return null; }
+    private Long principalIdOrNull() {
+        return null;
+    }
 }
