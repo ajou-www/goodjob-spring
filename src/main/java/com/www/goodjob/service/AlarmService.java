@@ -2,11 +2,15 @@ package com.www.goodjob.service;
 
 import com.www.goodjob.domain.alarm.Alarm;
 import com.www.goodjob.domain.alarm.AlarmJob;
+import com.www.goodjob.dto.JobDto;                         // ⬅️ 추가
+import com.www.goodjob.dto.ScoredJobDto;
 import com.www.goodjob.dto.alarm.*;
 import com.www.goodjob.enums.AlarmStatus;
 import com.www.goodjob.enums.AlarmType;
 import com.www.goodjob.repository.AlarmJobRepository;
 import com.www.goodjob.repository.AlarmRepository;
+import com.www.goodjob.repository.JobBatchRepository;       // ⬅️ 추가
+import com.www.goodjob.repository.RecommendScoreRepository; // ⬅️ 추가
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
+import java.util.*;                                         // ⬅️ 추가(Map, List, HashMap, ArrayList 등)
+import java.util.stream.Collectors;                         // ⬅️ 추가
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +29,10 @@ public class AlarmService {
 
     private final AlarmRepository alarmRepository;
     private final AlarmJobRepository alarmJobRepository;
+
+    // ⬇️ 점수/공고 조회에 필요한 의존성 추가
+    private final JobBatchRepository jobRepo;
+    private final RecommendScoreRepository recommendScoreRepository;
 
     /* CREATE */
     @Transactional
@@ -47,6 +56,12 @@ public class AlarmService {
                 .status(req.getStatus() == null ? AlarmStatus.QUEUED : req.getStatus())
                 .sentAt(req.getSentAt())
                 .read(false)
+                // ✅ A안: CV 스냅샷 저장
+                .cvId(req.getCvId())
+                .cvTitle(req.getCvTitle())
+                // ✅ 제목 코드/파라미터도 함께 저장
+                .titleCode(req.getTitleCode())
+                .payload(req.getParams())
                 .build();
 
         Alarm saved = alarmRepository.save(alarm);
@@ -139,6 +154,10 @@ public class AlarmService {
         if (req.getType() != null) alarm.setType(req.getType());
         if (req.getStatus() != null) alarm.setStatus(req.getStatus());
         if (req.getSentAt() != null) alarm.setSentAt(req.getSentAt());
+        if (req.getTitleCode() != null) alarm.setTitleCode(req.getTitleCode()); // ⬅️ 추가
+        if (req.getParams() != null) alarm.setPayload(req.getParams());         // ⬅️ 추가
+        if (req.getCvId() != null)   alarm.setCvId(req.getCvId());              // ⬅️ 추가
+        if (req.getCvTitle() != null) alarm.setCvTitle(req.getCvTitle());       // ⬅️ 추가
 
         if (req.getJobs() != null) {
             alarmJobRepository.deleteByAlarmId(alarmId);
@@ -258,14 +277,50 @@ public class AlarmService {
                 .dedupeKey(alarm.getDedupeKey())
                 .status(alarm.getStatus())
                 .sentAt(alarm.getSentAt())
-
-                /* 추가 매핑 */
+                // ✅ CV 스냅샷
                 .cvId(alarm.getCvId())
                 .cvTitle(alarm.getCvTitle())
-
                 .titleCode(alarm.getTitleCode())
                 .params(alarm.getPayload())
                 .jobs(jobs)
                 .build();
+    }
+
+    /* CV_MATCH면 점수 포함, 그 외는 0.0 */
+    @Transactional(readOnly = true)
+    public List<ScoredJobDto> getJobsWithOptionalScores(Long actorUserId, boolean isAdmin, Long alarmId) {
+        var alarm = alarmRepository.findById(alarmId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "알림 없음"));
+        if (!isAdmin && !alarm.getUserId().equals(actorUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 없음");
+        }
+
+        // rank 순서로 jobIds
+        List<AlarmJob> rels = alarmJobRepository.findByAlarmIdOrderByRankAsc(alarmId);
+        if (rels.isEmpty()) return List.of();
+        List<Long> jobIds = rels.stream().map(AlarmJob::getJobId).toList();
+
+        // 공고 조회 → DTO
+        var jobs = jobRepo.findByIdIn(jobIds);
+        Map<Long, JobDto> jobDtoMap = jobs.stream()
+                .map(JobDto::from)
+                .collect(Collectors.toMap(JobDto::getId, j -> j));
+
+        // 점수: CV_MATCH && cvId 존재 시에만 조회
+        Map<Long, Double> scoreMap = new HashMap<>();
+        if (alarm.getType() == AlarmType.CV_MATCH && alarm.getCvId() != null) {
+            var rows = recommendScoreRepository.findByCvIdAndJobIdIn(alarm.getCvId(), jobIds);
+            for (var r : rows) scoreMap.put(r.getJob().getId(), (double) r.getScore());
+        }
+
+        // rank 순서 유지 + 점수 결합 (cosine/bm25는 0.0)
+        List<ScoredJobDto> out = new ArrayList<>(jobIds.size());
+        for (Long jobId : jobIds) {
+            var base = jobDtoMap.get(jobId);
+            if (base == null) continue; // 비공개/삭제 등 스킵
+            double score = scoreMap.getOrDefault(jobId, 0.0);
+            out.add(ScoredJobDto.from(base, score, 0.0, 0.0));
+        }
+        return out;
     }
 }
