@@ -106,7 +106,7 @@ public class AuthController {
             return unauthorizedAndClearCookie(response, "REFRESH_MISSING", "refresh token 누락");
         }
 
-        JwtTokenProvider.TokenValidationResult vr = jwtTokenProvider.validateTokenDetailed(refreshToken);
+        var vr = jwtTokenProvider.validateTokenDetailed(refreshToken);
         if (vr == JwtTokenProvider.TokenValidationResult.EXPIRED) {
             return unauthorizedAndClearCookie(response, "REFRESH_EXPIRED", "refresh token 만료");
         }
@@ -115,18 +115,22 @@ public class AuthController {
         }
 
         String email = jwtTokenProvider.getEmail(refreshToken);
+        String jti   = jwtTokenProvider.getJti(refreshToken);
+        if (jti == null || jti.isBlank()) {
+            return unauthorizedAndClearCookie(response, "REFRESH_NO_JTI", "jti 누락된 refresh token");
+        }
 
-        if (!refreshTokenRedisService.isTokenValid(email, refreshToken)) {
-            // 회전되었는데 브라우저 쿠키가 옛 토큰을 보낸 상황 등
+        // 이메일 + jti로 일치 검증 (기기/탭 단위)
+        if (!refreshTokenRedisService.isTokenValid(email, jti, refreshToken)) {
             return unauthorizedAndClearCookie(response, "REFRESH_MISMATCH", "서버 저장 토큰과 일치하지 않음");
         }
 
-        // 새 토큰 발급 + 저장 + 쿠키 갱신
-        String newAccessToken = jwtTokenProvider.generateAccessToken(email);
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(email);
-        refreshTokenRedisService.saveToken(email, newRefreshToken, 14);
-        addCookie(response, buildRefreshCookie(newRefreshToken, 14));
+        // AT 재발급 + RT 회전(동일 jti 유지) → 해당 기기/탭만 업데이트
+        String newAccessToken  = jwtTokenProvider.generateAccessToken(email);
+        String newRefreshToken = jwtTokenProvider.generateRefreshTokenWithExistingJti(email, jti);
+        refreshTokenRedisService.saveToken(email, jti, newRefreshToken, 14);
 
+        addCookie(response, buildRefreshCookie(newRefreshToken, 14));
         return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
     }
 
@@ -178,17 +182,29 @@ public class AuthController {
             프론트는 localStorage에 있는 accessToken도 함께 제거해야 함
             """)
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletResponse response,
+    public ResponseEntity<?> logout(@CookieValue(value = "refresh_token", required = false) String refreshToken,
+                                    HttpServletResponse response,
                                     @AuthenticationPrincipal CustomUserDetails userDetails) {
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        logger.info("현재 인증 객체: {}", auth);
-
-        User user = userDetails.getUser();
-
-        // 쿠키 제거(공통)
+        // 쿠키 제거는 항상
         addCookie(response, buildRefreshCookie("", 0));
-        refreshTokenRedisService.deleteToken(user.getEmail());
+
+        if (userDetails == null || userDetails.getUser() == null) {
+            // 비로그인 상태에서도 쿠키만 제거하고 OK 응답
+            return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
+        }
+
+        String email = userDetails.getUser().getEmail();
+        String jti = null;
+        if (refreshToken != null) {
+            try { jti = jwtTokenProvider.getJti(refreshToken); } catch (Exception ignore) {}
+        }
+
+        // 현재 기기/탭만 로그아웃 (jti가 있으면 단일, 없으면 안전하게 전체 삭제)
+        if (jti != null && !jti.isBlank()) {
+            refreshTokenRedisService.deleteToken(email, jti);
+        } else {
+            refreshTokenRedisService.deleteAllTokens(email);
+        }
 
         return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
     }
@@ -203,15 +219,21 @@ public class AuthController {
             """
     )
     @DeleteMapping("/withdraw")
-    public ResponseEntity<?> withdraw(HttpServletResponse response,
+    public ResponseEntity<?> withdraw(@CookieValue(value = "refresh_token", required = false) String refreshToken,
+                                      HttpServletResponse response,
                                       @AuthenticationPrincipal CustomUserDetails userDetails) {
-        User user = userDetails.getUser();
-
-        authService.withdraw(user); // 서비스 계층에서 트랜잭션 내 삭제
-
-        // 쿠키 제거(공통)
+        // 쿠키 제거
         addCookie(response, buildRefreshCookie("", 0));
-        refreshTokenRedisService.deleteToken(user.getEmail());
+
+        if (userDetails == null || userDetails.getUser() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "인증 정보가 없습니다"));
+        }
+
+        var user = userDetails.getUser();
+        authService.withdraw(user); // 서비스 계층에서 사용자 삭제
+
+        // 모든 기기/탭의 RT 제거
+        refreshTokenRedisService.deleteAllTokens(user.getEmail());
 
         return ResponseEntity.ok(Map.of(
                 "message", "회원 탈퇴가 완료되었고, 로그아웃 처리되었습니다.",

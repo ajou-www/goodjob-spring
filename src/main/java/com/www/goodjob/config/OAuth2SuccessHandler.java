@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
@@ -35,10 +36,19 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final UserOAuthRepository userOAuthRepository;
     private final RefreshTokenRedisService refreshTokenRedisService;
 
+    // 쿠키 속성(운영/개발 프로파일에 맞춰 yml로 분리)
+    @Value("${app.cookie.domain:}")
+    private String cookieDomain;
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
+    @Value("${app.cookie.sameSite:None}")
+    private String cookieSameSite;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
+
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         CustomOAuth2User customUser = (oAuth2User instanceof CustomOAuth2User)
                 ? (CustomOAuth2User) oAuth2User
@@ -49,9 +59,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         OAuthProvider provider = extractProvider(customUser);
         String oauthId = customUser.getOauthId(provider);
 
-        // 회원이 없다면 저장 (최초 로그인)
+        // 최초 로그인 여부 판단 및 저장
         boolean isFirstLogin = !userRepository.existsByEmail(email);
-
         if (isFirstLogin) {
             User newUser = userRepository.save(User.builder()
                     .email(email)
@@ -70,20 +79,22 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             log.info("[OAUTH] firstLogin = false for email={}", email);
         }
 
-        // refreshToken 생성 및 Redis 저장
+        // 1) RT 생성 (jti 포함) + Redis 저장(email+jti별)
         String refreshToken = jwtTokenProvider.generateRefreshToken(email, isFirstLogin);
-        refreshTokenRedisService.saveToken(email, refreshToken, 14); // TTL 14일로 통일
+        String jti = jwtTokenProvider.getJti(refreshToken); // 새로 발급된 jti 추출
+        refreshTokenRedisService.saveToken(email, jti, refreshToken, 14);
 
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", refreshToken)
+        // 2) 쿠키에 RT 세팅 (도메인/보안 속성은 프로파일에 따라)
+        ResponseCookie.ResponseCookieBuilder cb = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .path("/")
-                .maxAge(Duration.ofDays(14)) // 쿠키 TTL 맞춤
-                .sameSite("None")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+                .sameSite(cookieSameSite)
+                .maxAge(Duration.ofDays(14));
+        if (cookieDomain != null && !cookieDomain.isBlank()) cb.domain(cookieDomain);
+        response.addHeader(HttpHeaders.SET_COOKIE, cb.build().toString());
 
-        // 리디렉션 처리
+        // 3) 프론트로 리다이렉션
         String encodedState = request.getParameter("state");
         String redirectUri = "https://www.goodjob.ai.kr/auth/callback";
 
