@@ -36,4 +36,6 @@ public class CaludeFeedbackPrompt {
            7. 강조할 키워드는 <strong> 태그로 감싸세요. 단, 어떤 style 속성도 사용하지 마세요.
            8. 위의 규칙 외에는 어떤 내용도 추가하지 마세요. 반환 형식은 유효한 HTML 조각이어야 합니다.
       """;
+
+
 }
