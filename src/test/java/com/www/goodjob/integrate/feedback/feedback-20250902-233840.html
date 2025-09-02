@@ -1,0 +1,291 @@
+      <meta charset="utf-8"/>
+      <div>
+         <style>
+         :root {
+           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+           --bg-primary: #f8fafc;
+           --bg-secondary: #ffffff;
+           --bg-card: #f1f5f9;
+           --border-color: #e2e8f0;
+           --text-primary: #0f172a;
+           --text-secondary: #334155;
+           --text-muted: #64748b;
+           --accent-good: #16a34a;
+           --accent-bad: #dc2626;
+           --accent-tip: #2563eb;
+           --accent-good-bg: rgba(22, 163, 74, 0.1);
+           --accent-bad-bg: rgba(220, 38, 38, 0.1);
+           --accent-tip-bg: rgba(37, 99, 235, 0.1);
+         }
+
+         * {
+           box-sizing: border-box;
+         }
+
+         body {
+           margin: 0;
+           background: var(--bg-primary);
+           color: var(--text-primary);
+           line-height: 1.6;
+         }
+
+         .wrap {
+           max-width: 1200px;
+           margin: 40px auto;
+           padding: 32px;
+           background: var(--bg-secondary);
+           border-radius: 20px;
+           box-shadow: 0 20px 40px rgba(0,0,0,.1);
+           border: 1px solid var(--border-color);
+         }
+
+         h1 {
+           margin: 0 0 16px;
+           font-size: 32px;
+           font-weight: 700;
+           background: linear-gradient(135deg, #2563eb, #7c3aed);
+           -webkit-background-clip: text;
+           -webkit-text-fill-color: transparent;
+           background-clip: text;
+         }
+
+         .meta {
+           color: var(--text-muted);
+           font-size: 14px;
+           margin-bottom: 32px;
+           padding: 12px 16px;
+           background: var(--bg-card);
+           border-radius: 10px;
+           border-left: 4px solid #2563eb;
+         }
+
+         .grid {
+           display: grid;
+           grid-template-columns: 1fr;
+           gap: 20px;
+         }
+
+         @media (min-width: 1000px) {
+           .grid { grid-template-columns: 1fr 1fr; }
+         }
+
+         .card {
+           background: var(--bg-card);
+           border: 1px solid var(--border-color);
+           border-radius: 16px;
+           padding: 24px;
+           transition: all 0.3s ease;
+         }
+
+         .card:hover {
+           border-color: #2563eb;
+           transform: translateY(-2px);
+           box-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
+         }
+
+         .card h2 {
+           margin-top: 0;
+           margin-bottom: 16px;
+           font-size: 18px;
+           font-weight: 600;
+           color: var(--text-secondary);
+         }
+
+         .mono {
+           white-space: pre-wrap;
+           font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+           line-height: 1.7;
+           font-size: 13px;
+           background: rgba(0,0,0,0.05);
+           padding: 20px;
+           border-radius: 12px;
+           border: 1px solid var(--border-color);
+         }
+
+         .feedback {
+           background: var(--bg-card);
+           border: 1px solid var(--border-color);
+           padding: 32px;
+           border-radius: 16px;
+           margin-bottom: 32px;
+         }
+
+         .feedback h2 {
+           margin-top: 0;
+           font-size: 24px;
+           font-weight: 700;
+           color: var(--text-primary);
+           margin-bottom: 24px;
+         }
+
+         .good-things, .bad-things, .tips {
+           margin-bottom: 32px;
+           padding: 24px;
+           border-radius: 12px;
+           border-left: 5px solid;
+         }
+
+         .good-things {
+           background: var(--accent-good-bg);
+           border-left-color: var(--accent-good);
+         }
+
+         .bad-things {
+           background: var(--accent-bad-bg);
+           border-left-color: var(--accent-bad);
+         }
+
+         .tips {
+           background: var(--accent-tip-bg);
+           border-left-color: var(--accent-tip);
+         }
+
+         .good-things h2 {
+           color: var(--accent-good);
+           font-size: 20px;
+           margin-bottom: 16px;
+           display: flex;
+           align-items: center;
+           gap: 8px;
+         }
+
+         .good-things h2::before {
+           content: "✓";
+           font-size: 24px;
+           font-weight: bold;
+         }
+
+         .bad-things h2 {
+           color: var(--accent-bad);
+           font-size: 20px;
+           margin-bottom: 16px;
+           display: flex;
+           align-items: center;
+           gap: 8px;
+         }
+
+         .bad-things h2::before {
+           content: "⚠";
+           font-size: 24px;
+         }
+
+         .tips h2 {
+           color: var(--accent-tip);
+           font-size: 20px;
+           margin-bottom: 16px;
+           display: flex;
+           align-items: center;
+           gap: 8px;
+         }
+
+         .tips h2::before {
+           content: "💡";
+           font-size: 24px;
+         }
+
+         .good-things ul,
+         .bad-things ul,
+         .tips ul {
+           list-style: none;
+           padding: 0;
+           margin: 0;
+         }
+
+         .good-things li,
+         .bad-things li,
+         .tips li {
+           margin-bottom: 16px;
+           padding: 16px;
+           background: rgba(0,0,0,0.03);
+           border-radius: 8px;
+           border-left: 3px solid;
+           line-height: 1.7;
+         }
+
+         .good-things li {
+           border-left-color: var(--accent-good);
+         }
+
+         .bad-things li {
+           border-left-color: var(--accent-bad);
+         }
+
+         .tips li {
+           border-left-color: var(--accent-tip);
+         }
+
+         strong {
+           color: #c2410c;
+           font-weight: 600;
+         }
+
+         .section-divider {
+           height: 1px;
+           background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+           margin: 40px 0;
+         }
+
+         @media (max-width: 768px) {
+           .wrap {
+             margin: 20px;
+             padding: 24px;
+           }
+
+           h1 {
+             font-size: 28px;
+           }
+
+           .card {
+             padding: 20px;
+           }
+
+           .feedback {
+             padding: 24px;
+           }
+
+           .mono {
+             font-size: 12px;
+             padding: 16px;
+           }
+         }
+       </style>
+
+       <div>
+  <div class="good-things">
+    <h2>좋은 점:</h2>
+    <ul>
+      <li>- <strong>Java와 Spring Boot 기반 개발 경험</strong>이 중고거래 플랫폼 프로젝트를 통해 잘 드러나 있어 채용 공고의 핵심 자격 요건과 일치합니다.</li>
+      <li>- <strong>JPA, QueryDSL</strong> 등 ORM 사용 능력을 기술 스택에 명시하고 있어 채용 공고에서 요구하는 자격 요건을 충족합니다.</li>
+      <li>- <strong>MySQL</strong> 사용 경험이 기술 스택에 포함되어 있어 RDBMS 관련 요건을 만족합니다.</li>
+      <li>- <strong>Redis를 활용한 캐싱 처리</strong>로 검색 속도를 30% 개선한 경험은 성능 최적화 능력을 보여주어 "성능 개선" 업무에 적합함을 증명합니다.</li>
+      <li>- <strong>Docker</strong>를 이용한 개발 환경 구축 및 배포 자동화 경험이 있어 컨테이너 환경 경험자 우대 조건에 부합합니다.</li>
+      <li>- <strong>RESTful API 서버 구축</strong> 경험은 "신규 서비스 API 서버 개발 및 운영" 업무와 직접적으로 연관됩니다.</li>
+    </ul>
+  </div>
+  
+  <div class="bad-things">
+    <h2>부족한 점:</h2>
+    <ul>
+      <li>- 이력서에는 <strong>대규모 트래픽 처리 경험</strong>에 대한 구체적인 내용이 부족합니다. 채용 공고에서는 대규모 트래픽 처리 능력을 중요하게 요구하고 있습니다.</li>
+      <li>- <strong>K8s(Kubernetes)</strong> 경험이 언급되지 않았습니다. Docker는 사용했지만 컨테이너 오케스트레이션 도구 경험이 없어 보입니다.</li>
+      <li>- <strong>Kafka, RabbitMQ 등 메시징 큐</strong> 관련 경험이 이력서에 전혀 언급되지 않았습니다. 이는 우대사항이지만 경쟁력에 영향을 줄 수 있습니다.</li>
+      <li>- 프로젝트 경험이 <strong>하나의 팀 프로젝트</strong>로만 제한되어 있어 다양한 상황에서의 문제 해결 능력을 판단하기 어렵습니다.</li>
+      <li>- <strong>시스템 유지보수</strong> 경험에 대한 언급이 없어 채용 공고의 "기존 시스템 유지보수" 업무 요건에 대한 적합성을 판단하기 어렵습니다.</li>
+    </ul>
+  </div>
+  
+  <div class="tips">
+    <h2>추가 팁:</h2>
+    <ul>
+      <li>- 중고거래 플랫폼 프로젝트에서 <strong>트래픽 처리 관련 경험</strong>이 있다면 구체적인 수치와 함께 상세히 기술하세요. 예: "일 평균 5만 건의 요청을 처리하는 API 서버 설계 및 구현"</li>
+      <li>- <strong>개인 프로젝트나 학습 경험</strong>을 통해 Kafka나 RabbitMQ 같은 메시징 큐 기술을 접해보고 이를 이력서에 추가하면 경쟁력이 높아질 것입니다.</li>
+      <li>- <strong>GitHub 링크</strong>가 있으니 실제 코드를 볼 수 있도록 대표적인 프로젝트 레포지토리를 정리하고 README를 충실히 작성하세요.</li>
+      <li>- 이력서에 <strong>"문제 해결 사례"</strong> 섹션을 추가하여 프로젝트에서 마주친 기술적 어려움과 해결 방법을 구체적으로 서술하면 좋습니다.</li>
+      <li>- <strong>성능 테스트 및 모니터링</strong> 경험이 있다면 추가하세요. 예: "JMeter를 활용한 부하 테스트 진행 및 시스템 병목 현상 개선" 또는 "Prometheus, Grafana를 활용한 시스템 모니터링 구축"</li>
+      <li>- <strong>CI/CD 파이프라인</strong> 구축 경험을 더 자세히 설명하면 DevOps 역량을 어필할 수 있습니다. Jenkins 사용 경험을 구체적으로 기술하세요.</li>
+      <li>- 이력서에 <strong>"기술적 관심사"</strong> 섹션을 추가하여 Kubernetes, 메시징 큐 등 현재 학습 중이거나 관심 있는 기술을 명시하면 성장 가능성을 보여줄 수 있습니다.</li>
+    </ul>
+  </div>
+</div>
+      </div>
+      </meta>
