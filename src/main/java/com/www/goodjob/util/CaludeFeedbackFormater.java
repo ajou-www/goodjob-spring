@@ -271,7 +271,7 @@ public class CaludeFeedbackFormater {
         return this.html.formatted(
                 this.css,
                 feedBack
-        );
+        ).replaceAll("[\\n\\r\\t]", "");
     }
 
 
