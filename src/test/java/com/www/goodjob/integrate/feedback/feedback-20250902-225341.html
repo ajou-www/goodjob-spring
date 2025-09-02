@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>피드백 리포트</title>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+      --bg-primary: #f8fafc;
+      --bg-secondary: #ffffff;
+      --bg-card: #f1f5f9;
+      --border-color: #e2e8f0;
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --accent-good: #16a34a;
+      --accent-bad: #dc2626;
+      --accent-tip: #2563eb;
+      --accent-good-bg: rgba(22, 163, 74, 0.1);
+      --accent-bad-bg: rgba(220, 38, 38, 0.1);
+      --accent-tip-bg: rgba(37, 99, 235, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 32px;
+      background: var(--bg-secondary);
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.1);
+      border: 1px solid var(--border-color);
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .meta {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 32px;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border-radius: 10px;
+      border-left: 4px solid #2563eb;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 1000px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .mono {
+      white-space: pre-wrap;
+      font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+      line-height: 1.7;
+      font-size: 13px;
+      background: rgba(0,0,0,0.05);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .feedback {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 32px;
+      border-radius: 16px;
+      margin-bottom: 32px;
+    }
+
+    .feedback h2 {
+      margin-top: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+    }
+
+    .good-things, .bad-things, .tips {
+      margin-bottom: 32px;
+      padding: 24px;
+      border-radius: 12px;
+      border-left: 5px solid;
+    }
+
+    .good-things {
+      background: var(--accent-good-bg);
+      border-left-color: var(--accent-good);
+    }
+
+    .bad-things {
+      background: var(--accent-bad-bg);
+      border-left-color: var(--accent-bad);
+    }
+
+    .tips {
+      background: var(--accent-tip-bg);
+      border-left-color: var(--accent-tip);
+    }
+
+    .good-things h2 {
+      color: var(--accent-good);
+      font-size: 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .good-things h2::before {
+      content: "✓";
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .bad-things h2 {
+      color: var(--accent-bad);
+      font-size: 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bad-things h2::before {
+      content: "⚠";
+      font-size: 24px;
+    }
+
+    .tips h2 {
+      color: var(--accent-tip);
+      font-size: 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tips h2::before {
+      content: "💡";
+      font-size: 24px;
+    }
+
+    .good-things ul,
+    .bad-things ul,
+    .tips ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .good-things li,
+    .bad-things li,
+    .tips li {
+      margin-bottom: 16px;
+      padding: 16px;
+      background: rgba(0,0,0,0.03);
+      border-radius: 8px;
+      border-left: 3px solid;
+      line-height: 1.7;
+    }
+
+    .good-things li {
+      border-left-color: var(--accent-good);
+    }
+
+    .bad-things li {
+      border-left-color: var(--accent-bad);
+    }
+
+    .tips li {
+      border-left-color: var(--accent-tip);
+    }
+
+    strong {
+      color: #c2410c;
+      font-weight: 600;
+    }
+
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+      margin: 40px 0;
+    }
+
+    @media (max-width: 768px) {
+      .wrap {
+        margin: 20px;
+        padding: 24px;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .feedback {
+        padding: 24px;
+      }
+
+      .mono {
+        font-size: 12px;
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>피드백 리포트</h1>
+    <div class="meta">생성 시각: 20250902-225341</div>
+
+    <section class="feedback">
+      <h2>생성된 피드백</h2>
+      <div><div>
+  <div class="good-things">
+    <h2>좋은 점:</h2>
+    <ul>
+      <li>- <strong>Java, Spring Boot, JPA, QueryDSL</strong> 기술 스택이 채용 공고의 핵심 자격 요건과 정확히 일치합니다. 이는 지원자가 회사의 기술 환경에 빠르게 적응할 수 있음을 보여줍니다.</li>
+      <li>- <strong>MySQL</strong> 사용 경험이 있어 채용 공고에서 요구하는 RDBMS 사용 경험 요건을 충족합니다.</li>
+      <li>- <strong>Docker</strong> 활용 경험이 있어 컨테이너 환경에 대한 이해도가 있음을 보여주며, 이는 채용 공고의 우대사항과 일치합니다.</li>
+      <li>- 중고거래 플랫폼 프로젝트에서 <strong>RESTful API 서버 구축</strong> 경험은 신규 서비스 API 서버 개발이라는 주요 업무와 직접적으로 연관됩니다.</li>
+      <li>- <strong>Redis를 활용한 캐싱 처리</strong>로 검색 속도를 30% 개선한 경험은 성능 개선 능력을 보여주며, 이는 채용 공고의 '성능 개선' 업무와 관련이 있습니다.</li>
+    </ul>
+  </div>
+  <div class="bad-things">
+    <h2>부족한 점:</h2>
+    <ul>
+      <li>- 이력서에 <strong>대규모 트래픽 처리 경험</strong>에 대한 구체적인 내용이 부족합니다. 채용 공고에서는 대규모 트래픽 처리 능력을 중요시하고 있습니다.</li>
+      <li>- <strong>Kafka, RabbitMQ 등 메시징 큐 경험</strong>이 언급되어 있지 않습니다. 이는 채용 공고의 우대사항 중 하나입니다.</li>
+      <li>- <strong>K8s(Kubernetes)</strong> 경험이 이력서에 포함되어 있지 않습니다. Docker는 있으나 K8s는 언급되지 않았습니다.</li>
+      <li>- 기존 시스템 <strong>유지보수 경험</strong>에 대한 언급이 부족합니다. 채용 공고에서는 이 부분을 주요 업무로 명시하고 있습니다.</li>
+      <li>- 이력서에 <strong>팀 협업 경험</strong>이나 <strong>코드 리뷰</strong> 등 개발 프로세스와 관련된 경험이 구체적으로 언급되어 있지 않습니다.</li>
+    </ul>
+  </div>
+  <div class="tips">
+    <h2>추가 팁:</h2>
+    <ul>
+      <li>- 중고거래 플랫폼 프로젝트에서 <strong>처리한 트래픽 규모</strong>와 <strong>안정적인 서비스 운영</strong>을 위해 어떤 노력을 했는지 구체적인 수치나 사례를 추가하세요.</li>
+      <li>- Redis 활용 경험이 있으니, 이를 확장하여 <strong>분산 시스템 설계</strong>나 <strong>캐싱 전략</strong>에 대한 이해도를 더 강조해보세요.</li>
+      <li>- Jenkins 경험이 있다면, <strong>CI/CD 파이프라인 구축</strong>과 관련된 구체적인 경험을 추가하여 개발 프로세스 자동화 능력을 어필하세요.</li>
+      <li>- 가능하다면 <strong>Kafka나 RabbitMQ</strong> 같은 메시징 큐 기술을 학습하고 간단한 프로젝트에 적용해보는 것이 좋습니다.</li>
+      <li>- 프로젝트에서 <strong>문제 해결 사례</strong>나 <strong>성능 최적화 경험</strong>을 더 구체적으로 기술하여 실무 문제 해결 능력을 강조하세요.</li>
+      <li>- GitHub 링크가 있으니 <strong>개인 프로젝트나 오픈소스 기여</strong> 경험을 추가하여 자발적인 학습 의지와 코드 품질을 보여주세요.</li>
+      <li>- <strong>시스템 모니터링</strong>이나 <strong>로깅</strong> 관련 경험이 있다면 추가하여 운영 경험을 강조하세요.</li>
+    </ul>
+  </div>
+</div></div>
+    </section>
+    <div class="grid" style="margin-top:20px">
+    </div>
+  </main>
+</body>
+</html>
