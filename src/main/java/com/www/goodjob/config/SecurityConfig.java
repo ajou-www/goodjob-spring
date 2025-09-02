@@ -131,10 +131,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
-                "https://www.goodjob.ai.kr" // 운영 프론트
+                "https://www.goodjob.ai.kr", // 운영 프론트
                 // dev 프로파일에서만 아래를 추가:
                 // "http://localhost:3000",
-                // "https://localhost:5173"
+                "https://localhost:5173"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
