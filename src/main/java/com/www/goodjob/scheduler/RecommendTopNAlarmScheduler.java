@@ -36,13 +36,19 @@ public class RecommendTopNAlarmScheduler {
     @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
     public void run() {
         // (userId, cvId) 단위로 TOP N 가져오는 쿼리(지원 코드)는 프로젝트 구현에 맞춰 사용
-        List<RecommendScoreProjection> list = rsRepo.findTopNPerUserAndCv(TOP_N);
+        // List<RecommendScoreProjection> list = rsRepo.findTopNPerUserAndCv(TOP_N);
+
+        LocalDate today = LocalDate.now(ZONE);
+        LocalDateTime sevenAM = today.atTime(7, 0);
+
+        // 오늘 7시 이후 job만 대상으로 추천
+        List<RecommendScoreProjection> list =
+                rsRepo.findTopNPerUserAndCvSince(TOP_N, sevenAM);
 
         Map<UserCvKey, List<RecommendScoreProjection>> byUserCv = list.stream()
                 .filter(r -> r.getScore() != null && r.getScore() >= THRESHOLD)
                 .collect(Collectors.groupingBy(r -> new UserCvKey(r.getUserId(), r.getCvId())));
 
-        LocalDate today = LocalDate.now(ZONE);
         LocalDateTime now = LocalDateTime.now(ZONE);
         int generated = 0;
 

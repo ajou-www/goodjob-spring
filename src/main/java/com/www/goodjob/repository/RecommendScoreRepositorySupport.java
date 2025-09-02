@@ -33,4 +33,33 @@ public interface RecommendScoreRepositorySupport extends Repository<RecommendSco
         WHERE rn <= :topN
         """, nativeQuery = true)
     List<RecommendScoreProjection> findTopNPerUserAndCv(@Param("topN") int topN);
+
+    @Query(value = """
+    WITH ranked AS (
+      SELECT
+        c.user_id       AS userId,
+        rs.cv_id        AS cvId,
+        rs.job_id       AS jobId,
+        rs.score        AS score,
+        j.title         AS title,
+        j.company_name  AS companyName,
+        ROW_NUMBER() OVER (
+          PARTITION BY c.user_id, rs.cv_id
+          ORDER BY rs.score DESC, rs.created_at DESC, rs.job_id DESC
+        ) AS rn
+      FROM recommend_score rs
+      JOIN cv   c ON c.id = rs.cv_id
+      JOIN jobs j ON j.id = rs.job_id
+      WHERE j.is_public = TRUE
+        AND j.created_at >= :since   -- ⬅️ 오늘 7시 이후 등록된 job만
+    )
+    SELECT userId, cvId, jobId, score, title, companyName
+    FROM ranked
+    WHERE rn <= :topN
+    """, nativeQuery = true)
+    List<RecommendScoreProjection> findTopNPerUserAndCvSince(
+            @Param("topN") int topN,
+            @Param("since") java.time.LocalDateTime since
+    );
+
 }
