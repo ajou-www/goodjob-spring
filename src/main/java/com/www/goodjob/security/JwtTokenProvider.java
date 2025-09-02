@@ -11,9 +11,8 @@ import java.util.UUID;
 @Component
 public class JwtTokenProvider {
 
-    // 유효기간
-    private final long ACCESS_TOKEN_VALID_TIME  = 1000L * 60 * 10;            // 10분
-    private final long REFRESH_TOKEN_VALID_TIME = 1000L * 60 * 60 * 24 * 14;  // 14일
+    private final long ACCESS_TOKEN_VALID_TIME  = 1000L * 60 * 10;              // 10분
+    private final long REFRESH_TOKEN_VALID_TIME = 1000L * 60 * 60 * 24 * 14;    // 14일
 
     private final String secretKey;
 
@@ -21,66 +20,46 @@ public class JwtTokenProvider {
         this.secretKey = Base64.getEncoder().encodeToString(secretKey.getBytes());
     }
 
-    /* ===== Access Token ===== */
+    // ===== Access =====
     public String generateAccessToken(String email) {
-        return buildToken(email, null, null, ACCESS_TOKEN_VALID_TIME);
+        long now = System.currentTimeMillis();
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(new Date(now))
+                .setExpiration(new Date(now + ACCESS_TOKEN_VALID_TIME))
+                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .compact();
     }
 
-    /* ===== Refresh Token (신규 jti 발급) ===== */
+    // ===== Refresh (신규 jti) =====
+    public String generateRefreshToken(String email, boolean isFirstLogin) {
+        String jti = UUID.randomUUID().toString();
+        return buildRefresh(email, isFirstLogin, jti, REFRESH_TOKEN_VALID_TIME);
+    }
     public String generateRefreshToken(String email) {
         return generateRefreshToken(email, false);
     }
 
-    public String generateRefreshToken(String email, boolean isFirstLogin) {
-        String jti = UUID.randomUUID().toString(); // 기기/탭 고유 식별자
-        return buildToken(email, jti, isFirstLogin, REFRESH_TOKEN_VALID_TIME);
-    }
-
-    /* ===== Refresh Token (기존 jti 재사용: 회전 시에 사용) ===== */
+    // ===== Refresh (기존 jti 유지) =====
     public String generateRefreshTokenWithExistingJti(String email, String jti) {
-        return buildToken(email, jti, null, REFRESH_TOKEN_VALID_TIME);
+        // firstLogin 클레임은 재발급 시 굳이 쓸 필요 없으면 false/누락 둘 다 OK
+        return buildRefresh(email, null, jti, REFRESH_TOKEN_VALID_TIME);
     }
 
-    /* ===== 공통 빌더 ===== */
-    private String buildToken(String email, String jti, Boolean firstLogin, long validityMs) {
+    private String buildRefresh(String email, Boolean firstLogin, String jti, long validityMs) {
         long now = System.currentTimeMillis();
-        JwtBuilder builder = Jwts.builder()
+        JwtBuilder b = Jwts.builder()
+                .setId(jti)                      // ★ jti 유지/부여
                 .setSubject(email)
                 .setIssuedAt(new Date(now))
                 .setExpiration(new Date(now + validityMs))
                 .signWith(SignatureAlgorithm.HS256, secretKey);
 
-        if (jti != null) builder.claim("jti", jti);
-        if (firstLogin != null) builder.claim("firstLogin", firstLogin);
-
-        return builder.compact();
+        if (firstLogin != null) b.claim("firstLogin", firstLogin);
+        return b.compact();
     }
 
-    /* ===== Claims helpers ===== */
-    private Claims parse(String token) {
-        return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody();
-    }
-
-    public String getEmail(String token) {
-        return parse(token).getSubject();
-    }
-
-    public String getJti(String token) {
-        Object v = parse(token).get("jti");
-        return v == null ? null : v.toString();
-    }
-
-    public Boolean getFirstLoginClaim(String token) {
-        Object v = parse(token).get("firstLogin");
-        if (v == null) return Boolean.FALSE;
-        return (v instanceof Boolean) ? (Boolean) v : Boolean.parseBoolean(v.toString());
-    }
-
-    /* ===== Validation ===== */
-    public boolean validateToken(String token) {
-        return validateTokenDetailed(token) == TokenValidationResult.VALID;
-    }
-
+    // ===== 파서/검증 =====
     public TokenValidationResult validateTokenDetailed(String token) {
         try {
             Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token);
@@ -91,8 +70,26 @@ public class JwtTokenProvider {
             return TokenValidationResult.INVALID;
         }
     }
-
-    public enum TokenValidationResult {
-        VALID, EXPIRED, INVALID
+    public boolean validateToken(String token) {
+        return validateTokenDetailed(token) == TokenValidationResult.VALID;
     }
+
+    public String getEmail(String token) {
+        return Jwts.parser().setSigningKey(secretKey)
+                .parseClaimsJws(token).getBody().getSubject();
+    }
+
+    public String getJti(String token) {
+        return Jwts.parser().setSigningKey(secretKey)
+                .parseClaimsJws(token).getBody().getId();
+    }
+
+    public Boolean getFirstLoginClaim(String token) {
+        Object v = Jwts.parser().setSigningKey(secretKey)
+                .parseClaimsJws(token).getBody().get("firstLogin");
+        if (v == null) return null;
+        return (v instanceof Boolean) ? (Boolean) v : Boolean.parseBoolean(v.toString());
+    }
+
+    public enum TokenValidationResult { VALID, EXPIRED, INVALID }
 }
