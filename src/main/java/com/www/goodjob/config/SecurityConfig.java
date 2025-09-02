@@ -46,37 +46,46 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(org.springframework.security.config.annotation.web.builders.HttpSecurity http) throws Exception {
         http
                 .cors(withDefaults())
-                .httpBasic(httpBasic -> httpBasic.disable())
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .logout(logout -> logout.disable())  // 디폴트 로그아웃 설정 해제
+                .httpBasic(h -> h.disable())
+                .csrf(c -> c.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .logout(l -> l.disable())
+                // 추가: 302 의존 제거, API는 401/403 JSON으로 응답
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, e) -> {
+                            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            res.setContentType("application/json;charset=UTF-8");
+                            res.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"로그인이 필요합니다\"}");
+                        })
+                        .accessDeniedHandler((req, res, e) -> {
+                            res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            res.setContentType("application/json;charset=UTF-8");
+                            res.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"권한이 없습니다\"}");
+                        })
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/", "/auth/login", "/auth/callback-endpoint", "/auth/token/refresh","/auth/master-token",
+                                "/", "/auth/login", "/auth/callback-endpoint", "/auth/token/refresh", "/auth/master-token",
                                 "/oauth2/**", "/swagger-ui/**", "/swagger-ui.html",
                                 "/v3/api-docs/**", "/s3/**", "/job-update/**", "/rec/**",
                                 "/jobs/**", "/error", "/actuator", "/actuator/prometheus", "/user/me", "/admin/**", "/payments/**", "/favicon.ico"
-                                ).permitAll()
-                        .requestMatchers("/auth/logout", "/auth/withdraw").authenticated() // 인증 필요
+                        ).permitAll()
+                        .requestMatchers("/auth/logout", "/auth/withdraw").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthFilter(jwtTokenProvider, userRepository), UsernamePasswordAuthenticationFilter.class)
 
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/auth/login")
-                        .authorizationEndpoint(endpoint -> endpoint
-                                .authorizationRequestResolver(customAuthorizationRequestResolver(clientRegistrationRepository))
+                        .authorizationEndpoint(endpoint ->
+                                endpoint.authorizationRequestResolver(customAuthorizationRequestResolver(clientRegistrationRepository))
                         )
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler((HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.setContentType("application/json");
                             response.setCharacterEncoding("UTF-8");
-
-                            String errorCode = "UNKNOWN_ERROR";
-                            String message = "로그인에 실패했습니다.";
-
-                            String json = String.format("{\"errorCode\": \"%s\", \"message\": \"%s\"}", errorCode, message);
+                            String json = "{\"errorCode\":\"UNKNOWN_ERROR\",\"message\":\"로그인에 실패했습니다.\"}";
                             response.getWriter().write(json);
                         })
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
@@ -107,28 +116,28 @@ public class SecurityConfig {
 
                 String stateParam = request.getParameter("state");
                 if (stateParam != null) {
-                    logger.debug("✅ Using custom state from front: {}", stateParam);
+                    logger.debug("Using custom state from front: {}", stateParam);
                     return OAuth2AuthorizationRequest.from(resolved)
                             .state(stateParam)
                             .build();
                 }
-
                 return resolved;
             }
         };
     }
 
-
+    // CORS: 정확한 Origin만 허용(와일드카드 금지), credentials 허용
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
-                "https://localhost:5173",
-                "https://www.goodjob.ai.kr",
-                "http://localhost:3000"
+                "https://www.goodjob.ai.kr" // 운영 프론트
+                // dev 프로파일에서만 아래를 추가:
+                // "http://localhost:3000",
+                // "https://localhost:5173"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

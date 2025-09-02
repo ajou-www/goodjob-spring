@@ -8,6 +8,7 @@ import com.www.goodjob.service.AuthService;
 import com.www.goodjob.service.RefreshTokenRedisService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -35,16 +36,50 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final AuthService authService;
+    private final RefreshTokenRedisService refreshTokenRedisService;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
-    private final RefreshTokenRedisService refreshTokenRedisService;
+
+    // 환경별 쿠키 속성 주입 (운영: .goodjob.ai.kr / None / Secure=true)
+    @Value("${app.cookie.domain:}")
+    private String cookieDomain;
+
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie.sameSite:None}")
+    private String cookieSameSite;
+
+    /** 공통: RT 쿠키 생성(갱신/삭제 겸용) */
+    private ResponseCookie buildRefreshCookie(String value, long days) {
+        ResponseCookie.ResponseCookieBuilder b = ResponseCookie.from("refresh_token", value)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite(cookieSameSite);
+
+        if (days > 0) b.maxAge(Duration.ofDays(days)); else b.maxAge(0);
+
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            b.domain(cookieDomain); // 예: .goodjob.ai.kr
+        }
+        return b.build();
+    }
+
+    private void addCookie(HttpServletResponse response, ResponseCookie cookie) {
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private ResponseEntity<?> unauthorizedAndClearCookie(HttpServletResponse response, String code, String message) {
+        addCookie(response, buildRefreshCookie("", 0));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("code", code, "message", message));
+    }
 
     @Operation(summary = "OAuth 로그인 URL 요청", description = """
             provider 파라미터로 소셜 로그인 방식 선택 (예: google, kakao) /
             프론트는 `/auth/login?provider=kakao` 호출 후 302 리다이렉트된 URL로 이동하면 됨 /
             (예: window.location.href = 해당 주소)
             """)
-    // 커스텀 로그인 페이지 (provider 파라미터 옵션 처리)
     @GetMapping("/login")
     public void loginPage(@RequestParam(value = "provider", required = false) String provider,
                           HttpServletResponse response) throws Exception {
@@ -67,39 +102,33 @@ public class AuthController {
             @CookieValue(value = "refresh_token", required = false) String refreshToken,
             HttpServletResponse response
     ) {
-        if (refreshToken == null || !jwtTokenProvider.validateToken(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Invalid or missing refresh token"));
+        if (refreshToken == null) {
+            return unauthorizedAndClearCookie(response, "REFRESH_MISSING", "refresh token 누락");
+        }
+
+        JwtTokenProvider.TokenValidationResult vr = jwtTokenProvider.validateTokenDetailed(refreshToken);
+        if (vr == JwtTokenProvider.TokenValidationResult.EXPIRED) {
+            return unauthorizedAndClearCookie(response, "REFRESH_EXPIRED", "refresh token 만료");
+        }
+        if (vr != JwtTokenProvider.TokenValidationResult.VALID) {
+            return unauthorizedAndClearCookie(response, "REFRESH_INVALID", "refresh token 무효");
         }
 
         String email = jwtTokenProvider.getEmail(refreshToken);
 
-        // Redis에 저장된 refresh_token과 비교하여 일치하는지 확인
         if (!refreshTokenRedisService.isTokenValid(email, refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "서버에 저장된 토큰과 일치하지 않음"));
+            // 회전되었는데 브라우저 쿠키가 옛 토큰을 보낸 상황 등
+            return unauthorizedAndClearCookie(response, "REFRESH_MISMATCH", "서버 저장 토큰과 일치하지 않음");
         }
 
-        // accessToken, refreshToken 새로 발급
+        // 새 토큰 발급 + 저장 + 쿠키 갱신
         String newAccessToken = jwtTokenProvider.generateAccessToken(email);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(email);
-
-        // Redis에 refreshToken 갱신 저장 (TTL: 14일)
         refreshTokenRedisService.saveToken(email, newRefreshToken, 14);
-
-        // 쿠키 갱신
-        ResponseCookie cookie = ResponseCookie.from("refresh_token", newRefreshToken)
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(Duration.ofDays(14))
-                .sameSite("None")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        addCookie(response, buildRefreshCookie(newRefreshToken, 14));
 
         return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
     }
-
 
     @Operation(
             summary = "accessToken + firstLogin 여부 반환",
@@ -148,7 +177,6 @@ public class AuthController {
             refresh_token 삭제하여 로그아웃 처리함 /
             프론트는 localStorage에 있는 accessToken도 함께 제거해야 함
             """)
-    // 로그아웃 (refresh_token 쿠키 제거)
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response,
                                     @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -158,34 +186,20 @@ public class AuthController {
 
         User user = userDetails.getUser();
 
-        // 쿠키 제거
-        ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(0)
-                .sameSite("None")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
-
+        // 쿠키 제거(공통)
+        addCookie(response, buildRefreshCookie("", 0));
         refreshTokenRedisService.deleteToken(user.getEmail());
 
         return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
     }
-
 
     @Operation(
             summary = "회원 탈퇴 (refresh_token + 사용자 정보 삭제)",
             description = """
             사용자 계정을 삭제하고 refresh_token 쿠키도 제거함
             프론트는 localStorage의 accessToken도 함께 제거해야 하며, 이후 로그인 페이지나 메인 페이지로 강제 이동 처리 권장
-                        
+
             🔐 Authorization: Bearer <accessToken> 헤더 필요
-                        
-            🔁 프론트 처리 예시:
-              1. 응답에서 `loggedOut: true` 확인
-              2. localStorage.clear() 또는 accessToken 제거
-              3. 로그인 페이지나 메인 페이지 등으로 이동
             """
     )
     @DeleteMapping("/withdraw")
@@ -195,16 +209,8 @@ public class AuthController {
 
         authService.withdraw(user); // 서비스 계층에서 트랜잭션 내 삭제
 
-        // 쿠키 제거
-        ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(0)
-                .sameSite("None")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
-
+        // 쿠키 제거(공통)
+        addCookie(response, buildRefreshCookie("", 0));
         refreshTokenRedisService.deleteToken(user.getEmail());
 
         return ResponseEntity.ok(Map.of(
@@ -222,13 +228,8 @@ public class AuthController {
         if (!"masterKey".equals(key)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid master key");
         }
-
-        // 관리자로 간주될 마스터 유저 이메일
         String email = "testadmin@goodjob.com";
-
-        // AccessToken만 발급
         String accessToken = jwtTokenProvider.generateAccessToken(email);
         return ResponseEntity.ok(Map.of("accessToken", accessToken));
     }
-
 }
