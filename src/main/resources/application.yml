@@ -119,7 +119,7 @@ toss:
 # 운영 쿠키 기본값 (서브도메인 공유)
 app:
   cookie:
-    domain: .goodjob.ai.kr  # www/be 등 서브도메인 공유
+    # domain: .goodjob.ai.kr  # www/be 등 서브도메인 공유
     secure: true            # HTTPS 필수
     sameSite: None          # 크로스사이트 허용(쿠키 전달용)
 
