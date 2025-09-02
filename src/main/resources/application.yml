@@ -27,9 +27,7 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
             redirect-uri: ${GOOGLE_REDIRECT_URI}
-            scope:
-              - email
-              - profile
+            scope: [ email, profile ]
           kakao:
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
@@ -37,9 +35,7 @@ spring:
             redirect-uri: ${KAKAO_REDIRECT_URI}
             client-name: Kakao
             authorization-grant-type: authorization_code
-            scope:
-              - profile_nickname
-              - account_email
+            scope: [ profile_nickname, account_email ]
         provider:
           google:
             authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
@@ -51,11 +47,10 @@ spring:
             token-uri: https://kauth.kakao.com/oauth/token
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
+
   data:
     redis:
-      # host: ${EC2_HOST}
-      host: redis
-#     host: localhost
+      host: redis        # 운영: docker/compose 네트워크의 redis 호스트
       port: 6379
       timeout: 6000
       lettuce:
@@ -70,7 +65,7 @@ spring:
         size: 2
 
 jwt:
-  secretKey: ${JWT_SECRET_KEY}
+  secretKey: ${JWT_SECRET_KEY}  # 배포 간 절대 변경 금지
 
 logging:
   level:
@@ -120,3 +115,10 @@ monitoring:
 
 toss:
   secret-key: ${TOSS_SECRET_KEY}
+
+# 운영 쿠키 기본값 (서브도메인 공유)
+app:
+  cookie:
+    domain: .goodjob.ai.kr  # www/be 등 서브도메인 공유
+    secure: true            # HTTPS 필수
+    sameSite: None          # 크로스사이트 허용(쿠키 전달용)

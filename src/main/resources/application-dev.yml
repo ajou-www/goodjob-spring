@@ -1,0 +1,73 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  application:
+    name: goodjob-dev
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: false
+
+  jackson:
+    time-zone: Asia/Seoul
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            # 로컬 리다이렉트 URI가 필요하면 주석 해제하여 덮어쓰기
+            # redirect-uri: http://localhost:8080/login/oauth2/code/google
+            scope: [ email, profile ]
+          kakao:
+            # redirect-uri: http://localhost:8080/login/oauth2/code/kakao
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            scope: [ profile_nickname, account_email ]
+
+  data:
+    redis:
+      host: localhost   # 로컬 개발
+      port: 6379
+      timeout: 6000
+
+springdoc:
+  server-url: http://localhost:8080
+
+server:
+  servlet:
+    session:
+      cookie:
+        same-site: Lax   # 로컬에선 Lax 권장(HTTP에서도 동작)
+        secure: false    # http://localhost 에서는 Secure 쿠키 저장 불가
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.www.goodjob.service.RefreshTokenRedisService: DEBUG
+
+# 🔵 로컬 쿠키 설정 (브라우저가 막지 않도록)
+app:
+  cookie:
+    domain: ""      # 비움(로컬 호스트 전용)
+    secure: false   # http에서도 저장 가능
+    sameSite: Lax   # 기본 페이지 내 요청 전달 OK(교차는 제한)
+
+# (선택) 프론트가 localhost일 때 참고용
+dev:
+  frontend:
+    origins:
+      - http://localhost:3000
+      - https://localhost:5173
