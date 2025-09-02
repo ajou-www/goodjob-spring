@@ -76,7 +76,8 @@ class ApplicationControllerTest {
                 LocalDate.of(2024, 12, 31),
                 ApplicationStatus.지원,  // ← 여기 수정
                 "1차 면접 완료",
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                LocalDate.of(2025, 12, 31)
         );
 
         given(applicationService.getApplications(any(User.class))).willReturn(List.of(response));
@@ -92,7 +93,9 @@ class ApplicationControllerTest {
     @WithMockUser
     @DisplayName("/applications - 지원 이력 수정 성공")
     void updateApplication_success() throws Exception {
-        ApplicationUpdateRequest dto = new ApplicationUpdateRequest(ApplicationStatus.면접, "메모");
+        ApplicationUpdateRequest dto = new ApplicationUpdateRequest(
+                ApplicationStatus.면접,
+                "메모",LocalDate.of(2025, 9, 1));
         mockMvc.perform(put("/applications")
                         .param("jobId", "100")
                         .contentType(MediaType.APPLICATION_JSON)
