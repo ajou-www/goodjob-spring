@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 public interface CvRepository extends JpaRepository<Cv, Long> {
     Optional<Cv> findByUserId(Long userId);
@@ -22,6 +23,12 @@ public interface CvRepository extends JpaRepository<Cv, Long> {
 
     @Query("select c.id from Cv c")
     List<Long> findAllCvIds();
+
+    @Query("select c.id from Cv c")
+    Stream<Long> streamAllCvIds();
+
+    @Query("select count(c) from Cv c")
+    long countAll();
 
     @Query("select c.fileName from Cv c where c.id = :cvId")
     Optional<String> findFileNameById(@Param("cvId") Long cvId);

@@ -32,6 +32,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -317,16 +318,32 @@ public class RecommendService {
         return fetchRecommendationFromFastAPI(cvId, topk);
     }
 
-    public void recomputeAllRecommendations(int topk) {
-        List<Long> cvIds = cvRepository.findAllCvIds();  // 페이징/배치로 나눠도 OK
-        for (Long cvId : cvIds) {
-            try {
-                List<ScoredJobDto> apiResult = fetchRecommendationFromFastAPI(cvId, topk);
-                asyncService.saveRecommendScores(cvId, apiResult);
-            } catch (Exception e) {
-                // 로그만 찍고 다음 사용자 진행
-                 log.warn("recompute failed. cvId={}", cvId, e);
-            }
+    @Transactional(readOnly = true)
+    public void recomputeAllRecommendationsForAllCvs(int topk) {
+        long total = cvRepository.countAll();
+        log.info("[Recommend][ALL] 전체 CV 수: {}", total);
+
+        // Stream은 트랜잭션 범위 내에서만 유효
+        try (Stream<Long> stream = cvRepository.streamAllCvIds()) {
+            final int[] processed = {0};
+            final int[] failed = {0};
+
+            stream.forEach(cvId -> {
+                try {
+                    List<ScoredJobDto> result = requestRecommendation(cvId, topk);
+                    int cur = ++processed[0];
+                    if (cur % 100 == 0 || cur == total) {
+                        log.info("[Recommend][ALL] 진행 {}/{} (cvId={})", cur, total, cvId);
+                    }
+                } catch (Exception ex) {
+                    failed[0]++;
+                    // 실패해도 다음 CV 계속 처리
+                    log.error("[Recommend][ALL] 실패: cvId={}, msg={}", cvId, ex.getMessage(), ex);
+                }
+            });
+
+            log.info("[Recommend][ALL] 전체 CV 대상 추천 재계산 완료 (topK={}) — 처리: {}건, 실패: {}건",
+                    topk, processed[0], failed[0]);
         }
     }
 }

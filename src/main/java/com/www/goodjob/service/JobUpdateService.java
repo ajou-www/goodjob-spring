@@ -20,20 +20,20 @@ public class JobUpdateService {
     private String fastapiHost;
 
     public void requestJobUpdate() {
-        // 상태 저장 (IN_PROGRESS)
         JobUpdateStatus status = new JobUpdateStatus();
         status.setRequestedAt(LocalDateTime.now());
         status.setStatus("IN_PROGRESS");
         jobUpdateStatusRepository.save(status);
 
-        // 비동기 작업 실행
         new Thread(() -> {
             try {
                 RestTemplate restTemplate = new RestTemplate();
                 String url = fastapiHost + "/save-es-jobs";
                 restTemplate.getForEntity(url, String.class);
-                recommendService.recomputeAllRecommendations(50);
-                // 작업 성공
+
+                // ES 저장 끝난 뒤 전체 CV에 대해 topK=10으로 재계산
+                recommendService.recomputeAllRecommendationsForAllCvs(10);
+
                 status.setStatus("COMPLETED");
             } catch (Exception e) {
                 status.setStatus("FAILED");
