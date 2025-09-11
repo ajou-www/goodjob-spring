@@ -39,9 +39,9 @@ public class RecommendTopNAlarmScheduler {
         // List<RecommendScoreProjection> list = rsRepo.findTopNPerUserAndCv(TOP_N);
 
         LocalDate today = LocalDate.now(ZONE);
-        LocalDateTime eightAM = today.atTime(8, 0);
+        LocalDateTime eightAM = today.atTime(6, 0);
 
-        // 오늘 8시 이후 job만 대상으로 추천
+        // 오늘 6시 이후 job만 대상으로 추천
         List<RecommendScoreProjection> list =
                 rsRepo.findTopNPerUserAndCvSince(TOP_N, eightAM);
 

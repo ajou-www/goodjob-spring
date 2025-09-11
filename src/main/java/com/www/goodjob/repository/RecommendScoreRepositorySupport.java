@@ -51,7 +51,7 @@ public interface RecommendScoreRepositorySupport extends Repository<RecommendSco
       JOIN cv   c ON c.id = rs.cv_id
       JOIN jobs j ON j.id = rs.job_id
       WHERE j.is_public = TRUE
-        AND j.created_at >= :since   -- ⬅️ 오늘 7시 이후 등록된 job만
+        AND j.created_at >= :since   -- ⬅️ 오늘 6시 이후 등록된 job만
     )
     SELECT userId, cvId, jobId, score, title, companyName
     FROM ranked
