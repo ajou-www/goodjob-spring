@@ -31,8 +31,7 @@ public class JobUpdateService {
                 String url = fastapiHost + "/save-es-jobs";
                 restTemplate.getForEntity(url, String.class);
 
-                // ES 저장 끝난 뒤 전체 CV에 대해 topK=10으로 재계산
-                recommendService.recomputeAllRecommendationsForAllCvs(10);
+                recommendService.recomputeAllRecommendationsForAllCvs();
 
                 status.setStatus("COMPLETED");
             } catch (Exception e) {
